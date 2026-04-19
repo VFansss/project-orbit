@@ -1,8 +1,24 @@
 # Tech Stack
 
-- Bun
-  - Used as backend JS runtime and backbone of others vertical stacks
+- Backend
+  - Bun
+    - Used as backend JS runtime and backbone of others vertical stacks
+    - Rationale: Typescript native, fast, can compile as an .exe
+  - Hono
+    - Ultra fast web-framework
+    - Rationale: Need some web server to serve API and eventually realize a client/server app
+  - SQLite
+    - Simple fast and effective DB
+    - Rationale: File-based DB to store computed data. No need for a strong multi-user DB
+  - DrizzleORM
 - CLI/TUI
   - `cac` as CLI frameworks
-    - Typescript native, no dependencies
-  - What TUI framework?
+    - Rationale: Typescript native, no dependencies
+  - clack
+    - Rationale: well renowed. Open to discussion.
+- Frontend (web? desktop app?)
+  - Svelte + Vite
+    - Rationale: FAST & no frills framework
+- Documentation
+  - Markdown
+  - TBD: doc-to-website compiler

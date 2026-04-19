@@ -1,4 +1,4 @@
-# Library Root Structure
+# Library Structure
 
 - Games
   - Will contain games and related metadata
@@ -17,7 +17,7 @@
 
 A folder is named using these tokens:
 
-- <Game Name> (Year)
+- "Game Name" (Year)
 - Attributes - separated with `()`
 - Unique Id, if present - separated with `[]`
 
@@ -28,7 +28,13 @@ Each gamefolder COULD have one of these subfolders
 - `.metadata`
   - Will contain subfolders of various metadata files (e.g. cover, artwork, icons, descriptions)
   - Will contain a file called `metadata.toml` with informations about the game
-- <game edition>
+. `.checksum`
+  - Will contain files used to calculate EVERY files inside the main game folder
+  - Each file that contains checksum made with a certain algorithm will have the relative extension
+    - e.g. checksum.md5, checksum.sha1
+    - the checksum of the whole game folder files is called "set.checksum.*algorithm*"
+    - the checksum of a single certain file is simply called "filename.*algorithm*"
+- "game edition"
   - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
 
 ### Files
