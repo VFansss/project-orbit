@@ -1,7 +1,9 @@
 /**
  * TODO: Logic to validate the identity string.
- * Keeps the core logic separated from the CLI.
+ * Now it's stricter to ensure the ID can be used as a folder name.
  */
 export function validateIdentity(id: string): boolean {
-  return id.length > 0 && !id.includes(' ');
+  // Blocks spaces and invalid filesystem characters: \ / : * ? " < > |
+  const invalidChars = /[\\/:*?"<>| ]/;
+  return id.length > 0 && !invalidChars.test(id);
 }

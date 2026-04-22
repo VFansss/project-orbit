@@ -1,6 +1,7 @@
 import type { UserStatus } from './models/user';
 import type { PlatformStatus } from './models/platform';
 import type { OrbitScope } from './models/auth';
+import type { LibraryStatus } from './models/library';
 
 /**
  * TODO: The Global State of Orbit.
@@ -8,10 +9,12 @@ import type { OrbitScope } from './models/auth';
 export interface OrbitState {
   user: UserStatus;
   platform?: PlatformStatus;
+  library: LibraryStatus;
 }
 
 let state: OrbitState = {
-  user: { isLoggedIn: false }
+  user: { isLoggedIn: false },
+  library: { isLoaded: false }
 };
 
 export const Orbit = {
@@ -31,12 +34,14 @@ export const Orbit = {
   },
 
   /**
-   * TODO: Check if the current state satisfies a list of requirements (scopes).
-   * This is used by hosts (CLI, Mobile, Web) to grant access to protected commands.
+   * TODO: Set the current active library.
    */
+  updateLibrary(path: string) {
+    state.library = { path, isLoaded: true };
+  },
+
   checkScopes(scopes: OrbitScope[]): { authorized: boolean; missing?: OrbitScope } {
     for (const scope of scopes) {
-      // Logic for USER_LOGGED requirement
       if (scope === 'USER_LOGGED' && !state.user.isLoggedIn) {
         return { authorized: false, missing: 'USER_LOGGED' };
       }
