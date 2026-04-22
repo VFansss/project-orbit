@@ -1,9 +1,9 @@
 import type { UserStatus } from './models/user';
 import type { PlatformStatus } from './models/platform';
+import type { OrbitScope } from './models/auth';
 
 /**
  * TODO: The Global State of Orbit.
- * Now it's truly agnostic: it doesn't know HOW platforms are detected.
  */
 export interface OrbitState {
   user: UserStatus;
@@ -15,10 +15,6 @@ let state: OrbitState = {
 };
 
 export const Orbit = {
-  /**
-   * TODO: Access the state. 
-   * We use a getter to ensure we always get the latest reference.
-   */
   get state() {
     if (!state.platform) {
       throw new Error("Orbit Core not initialized. Call Orbit.init(platformInfo) first.");
@@ -26,15 +22,25 @@ export const Orbit = {
     return state as Required<OrbitState>;
   },
   
-  /**
-   * TODO: The Host (CLI, Android, Web) must call this at startup
-   * providing its specific platform information.
-   */
   init(platform: PlatformStatus) {
     state.platform = platform;
   },
   
   updateUser(id: string) {
     state.user = { id, isLoggedIn: true };
+  },
+
+  /**
+   * TODO: Check if the current state satisfies a list of requirements (scopes).
+   * This is used by hosts (CLI, Mobile, Web) to grant access to protected commands.
+   */
+  checkScopes(scopes: OrbitScope[]): { authorized: boolean; missing?: OrbitScope } {
+    for (const scope of scopes) {
+      // Logic for USER_LOGGED requirement
+      if (scope === 'USER_LOGGED' && !state.user.isLoggedIn) {
+        return { authorized: false, missing: 'USER_LOGGED' };
+      }
+    }
+    return { authorized: true };
   }
 };
