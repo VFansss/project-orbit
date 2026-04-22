@@ -2,11 +2,11 @@ import { cac } from 'cac'
 import { Orbit, version } from '@orbit/core'
 import { loadConfig } from './storage'
 
-// Simple flat commands
+// Commands
 import registerLogin from './commands/login'
 import registerStatus from './commands/status'
-import registerImport from './commands/import'
 import registerLibrary from './commands/library'
+import registerScreenshot from './commands/screenshot'
 
 const cli = cac('orbit')
 
@@ -28,29 +28,27 @@ async function initApp() {
   console.log(`\x1b[2mUser: ${userDisplay} | Lib: ${libDisplay} | OS: ${platform.os}\x1b[0m\n`)
 }
 
-/**
- * TODO: Main execution flow.
- * Simple and direct to let CAC and Bun handle the execution.
- */
 async function main() {
   try {
     await initApp()
     
-    // 3. Register Commands
+    // Register all commands
     registerLogin(cli)
     registerStatus(cli)
-    registerImport(cli)
     registerLibrary(cli)
+    registerScreenshot(cli)
 
     cli.help()
+    
+    // Use parse() without 'run: false' for simplicity now that we have a standard syntax
     cli.parse()
 
-    // If no command was matched and we just ran 'orbit'
+    // If no command matched and we just ran 'orbit'
     if (!cli.matchedCommand && process.argv.length <= 2) {
       cli.outputHelp()
     }
   } catch (error: any) {
-    console.error(`\x1b[31mError:\x1b[0m ${error.message}`)
+    console.error(`\n\x1b[31mError:\x1b[0m ${error.message}`)
     process.exit(1)
   }
 }
