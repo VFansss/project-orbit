@@ -3,7 +3,7 @@
 - Backend
   - Bun
     - Used as backend JS runtime and backbone of others vertical stacks
-    - Rationale: Typescript native, fast, can compile as an .exe
+    - Rationale: Typescript native, fast, can compile as an .exe, has REPL
   - Hono
     - Ultra fast web-framework
     - Rationale: Need some web server to serve API and eventually realize a client/server app
