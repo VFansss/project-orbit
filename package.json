@@ -1,0 +1,15 @@
+{
+  "name": "project-orbit",
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "orbit": "bun run packages/cli/src/index.ts"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/node": "latest"
+  }
+}

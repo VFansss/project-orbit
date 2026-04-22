@@ -1,0 +1,9 @@
+{
+  "name": "@orbit/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "cac": "latest",
+    "@orbit/core": "workspace:*"
+  }
+}
