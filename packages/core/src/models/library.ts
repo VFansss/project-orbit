@@ -1,4 +1,4 @@
-export const LIBRARY_MARKER = '.library.orbit';
+export const LIBRARY_MARKER = 'orbit.library.toml';
 export const LIBRARY_FOLDERS = ['Games', 'UserData', 'Exports'];
 
 export interface LibraryStatus {

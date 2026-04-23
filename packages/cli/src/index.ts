@@ -2,16 +2,17 @@ import { cac } from 'cac'
 import { Orbit, version } from '@orbit/core'
 import { loadConfig } from './storage'
 
-// Commands
+// Simple flat commands
 import registerLogin from './commands/login'
 import registerStatus from './commands/status'
 import registerLibrary from './commands/library'
 import registerScreenshot from './commands/screenshot'
+import registerConfig from './commands/config'
 
 const cli = cac('orbit')
 
 /**
- * TODO: Initialize the core state and show a quick status line.
+ * TODO: Initialize the core state with professional camelCase properties.
  */
 async function initApp() {
   Orbit.init({ os: process.platform as any, arch: process.arch, isMobile: false })
@@ -32,18 +33,15 @@ async function main() {
   try {
     await initApp()
     
-    // Register all commands
     registerLogin(cli)
     registerStatus(cli)
     registerLibrary(cli)
     registerScreenshot(cli)
+    registerConfig(cli)
 
     cli.help()
-    
-    // Use parse() without 'run: false' for simplicity now that we have a standard syntax
     cli.parse()
 
-    // If no command matched and we just ran 'orbit'
     if (!cli.matchedCommand && process.argv.length <= 2) {
       cli.outputHelp()
     }

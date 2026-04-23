@@ -11,7 +11,7 @@ const baseDir = isWin
 
 export const PATHS = {
   configDir: baseDir,
-  configFile: join(baseDir, 'config.json')
+  configFile: join(baseDir, 'config.toml')
 };
 
 /**

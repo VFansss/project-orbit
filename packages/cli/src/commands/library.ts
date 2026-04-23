@@ -7,7 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolvePath, getSuggestedLibraryPath } from '../paths'
 
 /**
- * TODO: Library management command.
+ * TODO: Library command updated for camelCase.
  */
 export default (cli: CAC) => {
   cli
@@ -15,7 +15,6 @@ export default (cli: CAC) => {
     .action(async (path?: string) => {
       let targetPath = path
 
-      // 1. Get path interactively if not provided
       if (!targetPath) {
         p.intro('\x1b[34mLibrary Setup\x1b[0m')
         const response = await p.text({
@@ -28,7 +27,6 @@ export default (cli: CAC) => {
         targetPath = response as string
       }
 
-      // 2. Resolve the path (handles ~/ and makes it absolute)
       const absolutePath = resolvePath(targetPath)
       const markerPath = join(absolutePath, LIBRARY_MARKER)
 
@@ -50,7 +48,7 @@ export default (cli: CAC) => {
         
         try {
           await mkdir(absolutePath, { recursive: true })
-          await writeFile(markerPath, `# Orbit Library Marker\nCreated: ${new Date().toISOString()}`)
+          await writeFile(markerPath, `# Orbit Library Marker\n# This file identifies this folder as an Orbit library.\ncreated_at = ${new Date().toISOString()}`)
           s.stop('Library initialized.')
         } catch (err: any) {
           s.stop('Failed to initialize.', 1)
@@ -59,17 +57,13 @@ export default (cli: CAC) => {
         }
       }
 
-      // 4. Persistence
       const config = await loadConfig()
-      config.currentLibraryPath = absolutePath
+      config.currentLibraryPath = absolutePath // Now in camelCase
       await saveConfig(config)
       
       Orbit.updateLibrary(absolutePath)
 
-      if (!path) {
-        p.outro(`\x1b[32mLibrary active at:\x1b[0m ${absolutePath}`)
-      } else {
-        console.log(`\x1b[32mSuccess!\x1b[0m Library active at: ${absolutePath}`)
-      }
+      if (!path) p.outro(`\x1b[32mLibrary active at:\x1b[0m ${absolutePath}`)
+      else console.log(`\x1b[32mSuccess!\x1b[0m Library active at: ${absolutePath}`)
     })
 }

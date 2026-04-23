@@ -5,6 +5,7 @@
   "dependencies": {
     "@clack/prompts": "^1.2.0",
     "@orbit/core": "workspace:*",
-    "cac": "latest"
+    "cac": "latest",
+    "smol-toml": "^1.6.1"
   }
 }
