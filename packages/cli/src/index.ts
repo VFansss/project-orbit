@@ -2,22 +2,24 @@ import { cac } from 'cac'
 import { Orbit, version } from '@orbit/core'
 import { loadConfig } from './storage'
 
-// Simple flat commands
+// Commands
 import registerLogin from './commands/login'
 import registerStatus from './commands/status'
 import registerLibrary from './commands/library'
 import registerScreenshot from './commands/screenshot'
 import registerConfig from './commands/config'
+import registerSearch from './commands/search'
+import registerGet from './commands/get'
 
 const cli = cac('orbit')
 
 /**
- * TODO: Initialize the core state with professional camelCase properties.
+ * TODO: Initialize the core state.
  */
 async function initApp() {
-  Orbit.init({ os: process.platform as any, arch: process.arch, isMobile: false })
-  
   const config = await loadConfig()
+  Orbit.init({ os: process.platform as any, arch: process.arch, isMobile: false }, config.logLevel)
+  
   if (config.currentUser) Orbit.updateUser(config.currentUser)
   if (config.currentLibraryPath) Orbit.updateLibrary(config.currentLibraryPath)
 
@@ -33,11 +35,14 @@ async function main() {
   try {
     await initApp()
     
+    // Register all commands
     registerLogin(cli)
     registerStatus(cli)
     registerLibrary(cli)
     registerScreenshot(cli)
     registerConfig(cli)
+    registerSearch(cli)
+    registerGet(cli)
 
     cli.help()
     cli.parse()

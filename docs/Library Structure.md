@@ -29,7 +29,7 @@ Example:
 created_at = 2026-04-23T19:32:42.188Z
 ```
 
-### .orbit.metadata.toml
+### orbit.metadata.toml
 
 Will contain data regarding the game/folder itself
 
