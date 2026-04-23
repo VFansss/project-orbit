@@ -3,7 +3,7 @@
 - Backend
   - Bun
     - Used as backend JS runtime and backbone of others vertical stacks
-    - Rationale: Typescript native, fast, can compile as an .exe, has REPL
+    - Rationale: Typescript native, fast, can compile as native executable, has REPL
   - Hono
     - Ultra fast web-framework
     - Rationale: Need some web server to serve API and eventually realize a client/server app
@@ -11,6 +11,8 @@
     - Simple fast and effective DB
     - Rationale: File-based DB to store computed data. No need for a strong multi-user DB
   - DrizzleORM
+  - Zod
+    - Validate schemas, no dependencies
 - CLI/TUI
   - `cac` as CLI frameworks
     - Rationale: Typescript native, no dependencies
@@ -22,3 +24,6 @@
 - Documentation
   - Markdown
   - TBD: doc-to-website compiler
+- [TOML](https://toml.io/en/)
+  - Every files on disk that should contain info or data is in TOML format
+  - Easy to write even without an IDE, easy to understand, resilient structure, natively supported by Bun 

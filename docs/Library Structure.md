@@ -1,30 +1,66 @@
 # Library Structure
 
-- Games
-  - Will contain games and related metadata
-  - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
-    - e.g. ps1, pc, xbox
-    - within, each subfolder will be a [game folder](#game-folder)
-  - The name convention is expressed in the [game folder](#game-folder) paragraph
-- UserData
-  - Will contain a folder that will identify the user allowed to import its own data into the system
-  - More details into [user data](#user-data)
-- Exports
+- **Games**
+  - Main content: games divided by platform
+  - **Platform Folders** - more details [here](#platform-folders)
+    - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
+    - **Game Folders** - more details [here](#game-folders)
+- **UserData** - more details [here](#userdata)
+- **Exports**
   - Will contain inner folders usable by external tools like EmulationStation or Romm
 
 inside this folder, there MUST be these files:
 
-- .library.orbit
+- [orbit.library.toml](#orbitlibrarytoml)
 
-## Game folder
+## Files Example
 
-### Naming convention
+### orbit.library.toml
+
+A marker file that will declare that the directory is a Orbit library.
+
+Will contain also library-wide information and settings.
+
+Example:
+
+```toml
+# Orbit Library Marker
+# This file identifies this folder as an Orbit library.
+created_at = 2026-04-23T19:32:42.188Z
+```
+
+### .orbit.metadata.toml
+
+Will contain data regarding the game/folder itself
+
+Example:
+
+```toml
+[general]
+aliases = ["Grand Theft Auto V","GTA V","GTA 5"]
+
+[source]
+source = ["GOG","DVD Rip","https://devwebsite.com"] 
+```
+
+## Folders Example
+
+### Game Folders
+
+#### Naming convention
+
+DECISION: what to do with MAME and more "files heavy directories" e.g. GBA?
 
 A folder is named using these tokens:
 
 - "Game Name" (Year)
 - Attributes - separated with `()`
 - Unique Id, if present - separated with `[]`
+  - The unique id can be present ONLY if a true unique id is available for that platform.
+
+#### Content
+
+Generally speaking, every file here is intended as "part" of the game.
 
 ### Subfolders
 
@@ -42,17 +78,15 @@ Each gamefolder COULD have one of these subfolders
 - "game edition"
   - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
 
-### Files
+### Platform Folders
 
-Generally speaking, every file here is intended as "part" of the game overall.
-
-## UserData
+### UserData
 
 Each folder here will contain data related to an user.
 
 Each user can be a local user, without a domain e.g. "alex" or contain a domain e.g. "alex@gmail.com" or "alex@mydomain.com"
 
-### Subfolders
+#### Content
 
 Each gamefolder COULD have one of these subfolders
 
