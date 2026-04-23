@@ -62,21 +62,39 @@ A folder is named using these tokens:
 
 Generally speaking, every file here is intended as "part" of the game.
 
-### Subfolders
+There's a single exception: a file called `orbit.metadata.toml` can be inside the Game Folder. This is exactly the same file we could expect in `metadata\metadata.toml`, it's just an alternative location. The rationale is to avoid the metadata folder creation if there's avoidable.
+
+However, if the `metadata` folder is created, the file will be automatically moved into the relative folder, and will be renamed accordingly.
+
+#### Subfolders
 
 Each gamefolder COULD have one of these subfolders
 
-- `.metadata`
+- `metadata`
   - Will contain subfolders of various metadata files (e.g. cover, artwork, icons, descriptions)
   - Will contain a file called `metadata.toml` with informations about the game
-. `.checksum`
+  - Will contain other kind of metadata, if retrieved from other sources
+  - More detail [here]()
+- `checksum`
   - Will contain files used to calculate EVERY files inside the main game folder
   - Each file that contains checksum made with a certain algorithm will have the relative extension
     - e.g. checksum.md5, checksum.sha1
     - the checksum of the whole game folder files is called "set.checksum.*algorithm*"
     - the checksum of a single certain file is simply called "filename.*algorithm*"
-- "game edition"
+- `"game edition"`
   - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
+  - These kind of subfolders are, in fact, game folders
+  - This is not recursive: if a "game edition" folder have inner subfolders with a name not present above, they will be ignored/treated accordingly
+
+### Game Folders - Metadata folder
+
+Metadata folder will contain metadata about the game itself.
+
+Only the file called `metadata.toml` should be edited by the user
+
+If other files are present, they should be treated as a "read only" content, and should be not manually edited by the user 
+
+#### Content
 
 ### Platform Folders
 
