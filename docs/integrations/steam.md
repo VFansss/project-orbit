@@ -16,8 +16,7 @@ Each folder inside `remote` is composed by the steam APPID code
 
 If the game is a "non-steam game", a binding is contained within "screenshots.vdf" inside "760"
 
-## File Example
-
+**Content:**
 screenshots.vdf
 
 ```vdf
