@@ -1,6 +1,6 @@
 # Library Structure
 
-**Content:**
+**General structure:**
 
 - **Games**
   - Main content: games divided by platform
@@ -13,11 +13,7 @@
 
 inside this folder, there MUST be these files:
 
-- [orbit.library.toml](#orbitlibrarytoml)
-
-## Files Example
-
-### orbit.library.toml
+## orbit.library.toml
 
 A marker file that will declare that the directory is a Orbit library.
 
@@ -31,42 +27,14 @@ Example:
 created_at = 2026-04-23T19:32:42.188Z
 ```
 
-### metadata.toml
 
-If inside game folder (and only then) can also be called `orbit.metadata.toml`
+## Games
 
-Will contain data regarding the game/folder itself
+### Platform Folders
 
-Example:
+#### Game Folders
 
-```toml
-[general]
-aliases = ["Grand Theft Auto V","GTA V","GTA 5"]
-
-[source]
-source = ["GOG","DVD Rip","https://devwebsite.com"] 
-```
-
-## Folders Example
-
-### Game Folders
-
-#### Naming convention
-
-DECISION: what to do with MAME and more "files heavy directories" e.g. GBA?
-
-A folder is named using these tokens:
-
-- "Game Name" (Year)
-- Attributes - separated with `()`
-- Unique Id, if present - separated with `[]`
-  - The unique id can be present ONLY if a true unique id is available for that platform.
-
-**Content:**
-
-Depending on where this folder is located, it could have very different content
-
-#### Inside "Games\"
+Note: this kind of folder can be in multiple locations. To check what has in common for every instance, check more details [here](#game-folders---general-details)
 
 Generally speaking, every file here is intended as "part" of the game.
 
@@ -91,13 +59,7 @@ Each gamefolder COULD have one of these subfolders
   - These kind of subfolders are, in fact, game folders
   - This is not recursive: if a "game edition" folder have inner subfolders with a name not present above, they will be ignored/treated accordingly
 
-#### Inside "UserData\screenshots"
-
-Will contain screenshots made by an user regarding a certain game
-
-
-
-### Game Folders - metadata
+##### metadata
 
 Metadata folder will contain metadata about the game itself.
 
@@ -107,9 +69,23 @@ If other files are present, they should be treated as a "read only" content, and
 
 **Content:**
 
-- metadata.toml - more details [here](#metadatatoml)
+###### metadata.toml
 
-### Game Folders - checksum
+If inside game folder (and only then) can also be called `orbit.metadata.toml`
+
+Will contain data regarding the game/folder itself
+
+Example:
+
+```toml
+[general]
+aliases = ["Grand Theft Auto V","GTA V","GTA 5"]
+
+[source]
+source = ["GOG","DVD Rip","https://devwebsite.com"] 
+```
+
+##### checksum
 
 This folder will contain checksum of files related to the game itself
 
@@ -130,13 +106,11 @@ If the content of the game folder has been converted from another format e.g. ro
 
 ".original." will be the "marker" of a checksum of "filename" in the related "algorithm" BEFORE conversion
 
-### Platform Folders
-
-TODO:
-
-### UserData
+## UserData
 
 Each folder here will contain data related to an user.
+
+### Profile folders
 
 Each user can be a local user, without a domain e.g. "alex" or contain a domain e.g. "alex@gmail.com" or "alex@mydomain.com"
 
@@ -154,3 +128,53 @@ Each gamefolder COULD have one of these subfolders
   - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
     - e.g. ps1, pc, xbox
     - within, each subfolder will be a [game folder](#game-folder)
+
+#### Screenshots
+
+##### Platform Folders
+
+###### Game Folders
+
+Note: this kind of folder can be in multiple locations. To check what has in common for every instance, check more details [here](#game-folders---general-details)
+
+Will contain screenshots made by an user regarding a certain game
+
+
+Files follow a sortable and human-readable format:
+YYYY-MM-DD_HH-mm-ss[_INDEX][_DESCRIPTION].**extension**
+
+- Timestamp (YYYY-MM-DD_HH-mm-ss): The exact date and time when the screenshot was taken.
+- Index ([_INDEX]): An optional numeric suffix (e.g., _1) added only to prevent collisions if multiple screenshots are taken within the same second.
+- Description ([_DESCRIPTION]): An optional descriptive tag provided by the user or the system to identify the content (e.g., Boss-Fight). Can contain spaces
+
+Examples:
+  - 2026-04-24_19-30-15.png
+  - 2026-04-24_19-30-15_1.png (Collision handling)
+  - 2026-04-24_19-30-15_Final Boss.png (With description)
+  - 2026-04-24_19-30-15_1_Final Boss.png (Collision with description)
+
+No metadata files are planned for screenshots
+
+#### Savedata
+
+TODO:
+
+## Folders Example
+
+### Game Folders - general details
+
+#### Naming convention
+
+DECISION: what to do with MAME and more "files heavy directories" e.g. GBA?
+
+A folder is named using these tokens:
+
+- "Game Name" (Year)
+- Attributes - separated with `()`
+- Unique Id, if present - separated with `[]`
+  - The unique id can be present ONLY if a true unique id is available for that platform.
+
+### Platform Folders
+
+TODO:
+
