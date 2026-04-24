@@ -1,5 +1,7 @@
 # Library Structure
 
+**Content:**
+
 - **Games**
   - Main content: games divided by platform
   - **Platform Folders** - more details [here](#platform-folders)
@@ -29,7 +31,9 @@ Example:
 created_at = 2026-04-23T19:32:42.188Z
 ```
 
-### orbit.metadata.toml
+### metadata.toml
+
+If inside game folder (and only then) can also be called `orbit.metadata.toml`
 
 Will contain data regarding the game/folder itself
 
@@ -58,7 +62,11 @@ A folder is named using these tokens:
 - Unique Id, if present - separated with `[]`
   - The unique id can be present ONLY if a true unique id is available for that platform.
 
-#### Content
+**Content:**
+
+Depending on where this folder is located, it could have very different content
+
+#### Inside "Games\"
 
 Generally speaking, every file here is intended as "part" of the game.
 
@@ -66,7 +74,7 @@ There's a single exception: a file called `orbit.metadata.toml` can be inside th
 
 However, if the `metadata` folder is created, the file will be automatically moved into the relative folder, and will be renamed accordingly.
 
-#### Subfolders
+**Content:**
 
 Each gamefolder COULD have one of these subfolders
 
@@ -74,19 +82,22 @@ Each gamefolder COULD have one of these subfolders
   - Will contain subfolders of various metadata files (e.g. cover, artwork, icons, descriptions)
   - Will contain a file called `metadata.toml` with informations about the game
   - Will contain other kind of metadata, if retrieved from other sources
-  - More detail [here]()
+  - More detail [here](#game-folders---metadata)
 - `checksum`
-  - Will contain files used to calculate EVERY files inside the main game folder
-  - Each file that contains checksum made with a certain algorithm will have the relative extension
-    - e.g. checksum.md5, checksum.sha1
-    - the checksum of the whole game folder files is called "set.checksum.*algorithm*"
-    - the checksum of a single certain file is simply called "filename.*algorithm*"
+  - Will contain files used to calculate EVERY files inside the main game folder, with certain exceptions
+  - More details [here](#game-folders---checksum)
 - `"game edition"`
   - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
   - These kind of subfolders are, in fact, game folders
   - This is not recursive: if a "game edition" folder have inner subfolders with a name not present above, they will be ignored/treated accordingly
 
-### Game Folders - Metadata folder
+#### Inside "UserData\screenshots"
+
+Will contain screenshots made by an user regarding a certain game
+
+
+
+### Game Folders - metadata
 
 Metadata folder will contain metadata about the game itself.
 
@@ -94,9 +105,34 @@ Only the file called `metadata.toml` should be edited by the user
 
 If other files are present, they should be treated as a "read only" content, and should be not manually edited by the user 
 
-#### Content
+**Content:**
+
+- metadata.toml - more details [here](#metadatatoml)
+
+### Game Folders - checksum
+
+This folder will contain checksum of files related to the game itself
+
+3 algorithm are officially supported:
+
+- CRC32
+- MD5
+- SHA1
+
+Each file that contains checksum made with a certain algorithm will have the relative extension e.g. checksum.**md5**, checksum.**sha1**
+
+- the checksum of the content of the whole game folder files is called "set.checksum.**algorithm**"
+- the checksum of a single certain file is simply called "filename.**algorithm**"
+
+If the content of the game folder has been converted from another format e.g. rom or iso conversion, a copy of the checksum of the file BEFORE conversion will be retained in the following format:
+
+- "filename.original.**algorithm**"
+
+".original." will be the "marker" of a checksum of "filename" in the related "algorithm" BEFORE conversion
 
 ### Platform Folders
+
+TODO:
 
 ### UserData
 
@@ -104,7 +140,7 @@ Each folder here will contain data related to an user.
 
 Each user can be a local user, without a domain e.g. "alex" or contain a domain e.g. "alex@gmail.com" or "alex@mydomain.com"
 
-#### Content
+**Content:**
 
 Each gamefolder COULD have one of these subfolders
 
