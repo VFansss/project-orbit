@@ -23,8 +23,8 @@ export default (cli: CAC) => {
           message: 'How do you want to search?',
           options: [
             { value: 'name', label: 'Game Name (name - default)', hint: 'Fuzzy search by title' },
-            { value: 'steam_id', label: 'Steam ID (steam_id)', hint: 'Match by Steam AppID' },
-            { value: 'igdb_id', label: 'IGDB ID (igdb_id)', hint: 'Match by IGDB ID' },
+            { value: 'steam', label: 'Steam ID (steam)', hint: 'Match by Steam AppID' },
+            { value: 'igdb', label: 'IGDB ID (igdb)', hint: 'Match by IGDB ID' },
             { value: 'hash', label: 'ROM Hash (hash)', hint: 'Match by file hash' },
           ]
         })
@@ -82,12 +82,12 @@ export default (cli: CAC) => {
           const yearDisplay = res.year ? `(${res.year})` : ''
           const sourceColor = res.source === 'local' ? '\x1b[32m' : '\x1b[35m'
           
-          // Use a label consistent with search types (e.g. igdb_id, steam_id)
-          const idLabel = `${res.source}_id`
+          // Use a label consistent with search types (e.g. igdb, steam)
+          const idLabel = res.source === 'igdb' ? 'igdb' : (res.source === 'steam' ? 'steam' : `${res.source}_id`)
           let output = `${sourceColor}[${res.source}]\x1b[0m \x1b[1m${res.name}\x1b[0m ${yearDisplay} \x1b[2m[${idLabel}: ${res.id}]\x1b[0m`
           
           if (res.ids.steam) {
-            output += ` \x1b[2m[steam_id: ${res.ids.steam}]\x1b[0m`
+            output += ` \x1b[2m[steam: ${res.ids.steam}]\x1b[0m`
           }
 
           console.log(output)

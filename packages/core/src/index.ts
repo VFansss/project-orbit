@@ -4,6 +4,8 @@ export * from './models/config';
 export * from './models/auth';
 export * from './models/library';
 export * from './models/search';
+export * from './library';
+export * from './paths';
 export * from './integrations/igdb';
 export * from './state';
 export * from './search';

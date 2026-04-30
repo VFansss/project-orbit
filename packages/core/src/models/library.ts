@@ -5,3 +5,46 @@ export interface LibraryStatus {
   path?: string;
   isLoaded: boolean;
 }
+
+/**
+ * Confidence Levels with descriptions
+ */
+export const CONFIDENCE_MAP = {
+  0: 'Exact match (ID, Path, Serial+Platform)',
+  1: 'High confidence (Exact Folder Name, Serial without Platform)',
+  2: 'Medium confidence (Fuzzy Match, Alias, Remote Result)',
+  3: 'Low confidence (Multiple vague matches)',
+  '-1': 'No match'
+} as const;
+
+export type ConfidenceLevel = keyof typeof CONFIDENCE_MAP;
+
+export interface ResolveOptions {
+  platforms?: string[];
+  offline?: boolean;
+  remote?: boolean;
+  json?: boolean;
+}
+
+export interface ResolveResult {
+  confidence: ConfidenceLevel;
+  confidenceDescription: string;
+  path?: string;          // Absolute path if exists
+  relativePath?: string;  // Library-relative path (e.g. Games/pc/XCOM 2)
+  platform?: string;
+  name: string;
+  ids: Record<string, string>;
+  metadata?: any;
+}
+
+/**
+ * Documentation for supported URNs and Shorthands
+ */
+export const URN_DEFINITIONS = [
+  { type: 'name', example: 'name:XCOM 2', desc: 'Fuzzy search by game title' },
+  { type: 'steam', example: 'steam:268500', desc: 'Match by Steam AppID' },
+  { type: 'igdb', example: 'igdb:1942', desc: 'Match by IGDB ID' },
+  { type: 'serial', example: 'serial:SLUS-01234', desc: 'Match [ID] in folder name or metadata' },
+  { type: 'path', example: 'path:/absolute/path', desc: 'Match by exact file system path' },
+  { type: 'urn', example: 'urn:orbit:steam:123', desc: 'Full Orbit URN format' },
+] as const;

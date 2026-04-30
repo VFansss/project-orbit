@@ -31,10 +31,10 @@ export async function searchGames(
   let endpoint = 'games';
   let apicalypseBody = '';
 
-  if (type === 'steam_id') {
+  if (type === 'steam') {
     endpoint = 'external_games';
     apicalypseBody = `fields game.name, game.first_release_date, game.id; where uid = "${query}" & external_game_source = 1;`;
-  } else if (type === 'igdb_id') {
+  } else if (type === 'igdb') {
     apicalypseBody = `fields name, first_release_date, summary; where id = ${query};`;
   } else {
     // Requesting external_games to get Steam IDs (source 1)
@@ -63,7 +63,7 @@ export async function searchGames(
   const rawData = await response.json() as any[];
   Logger.debug(`[IGDB] Raw JSON Response: ${JSON.stringify(rawData)}`);
 
-  if (type === 'steam_id') {
+  if (type === 'steam') {
     return rawData
       .filter(item => item && item.game)
       .map(item => ({

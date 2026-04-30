@@ -5,7 +5,7 @@ import { loadConfig } from '../storage'
 
 /**
  * TODO: Precise metadata retrieval command.
- * Parameters aligned with 'search' command: igdb_id, steam_id, local.
+ * Parameters aligned with 'search' command: igdb, steam, local.
  */
 export default (cli: CAC) => {
   cli
@@ -26,8 +26,8 @@ export default (cli: CAC) => {
           const selectedSource = await p.select({
             message: 'Select the data source:',
             options: [
-              { value: 'igdb_id', label: 'IGDB ID', hint: 'The numerical ID on igdb.com' },
-              { value: 'steam_id', label: 'Steam ID', hint: 'The Steam AppID' },
+              { value: 'igdb', label: 'IGDB ID', hint: 'The numerical ID on igdb.com' },
+              { value: 'steam', label: 'Steam ID', hint: 'The Steam AppID' },
               { value: 'local', label: 'Local', hint: 'The exact folder name in your library' },
             ]
           })
@@ -54,10 +54,10 @@ export default (cli: CAC) => {
       try {
         let result: any;
         
-        if (targetSource === 'igdb_id') {
+        if (targetSource === 'igdb') {
           if (!igdbClientId || !igdbClientSecret) throw new Error("IGDB keys not configured.");
           result = await getIGDBGame(targetId!, igdbClientId, igdbClientSecret);
-        } else if (targetSource === 'steam_id') {
+        } else if (targetSource === 'steam') {
           if (!igdbClientId || !igdbClientSecret) throw new Error("IGDB keys not configured.");
           // Source 1 is Steam in IGDB
           result = await getGameByExternalId(targetId!, 1, igdbClientId, igdbClientSecret);

@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * TODO: Supported search types.
  */
-export const SearchTypeSchema = z.enum(['name', 'steam_id', 'igdb_id', 'hash']);
+export const SearchTypeSchema = z.enum(['name', 'steam', 'igdb', 'hash', 'serial', 'path', 'urn']);
 export type SearchType = z.infer<typeof SearchTypeSchema>;
 
 /**
