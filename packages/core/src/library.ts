@@ -1,16 +1,9 @@
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { parse as parseToml } from 'smol-toml';
-import { 
-  type ConfidenceLevel, 
-  type ResolveOptions, 
-  type ResolveResult,
-  CONFIDENCE_MAP 
-} from './models/library';
+import { CONFIDENCE_MAP, type ResolveOptions, type ResolveResult } from './models/library';
 import type { SearchType } from './models/search';
 import { Logger } from './logger';
 import { performSearch } from './search';
 import { PathService } from './paths';
+import { LocalResolverService } from './local-resolver';
 import type { OrbitConfig } from './models/config';
 
 export interface OrbitQuery {
@@ -22,14 +15,13 @@ export interface OrbitQuery {
 
 export class LibraryService {
   private paths: PathService;
+  private localResolver: LocalResolverService;
 
   constructor(private config: OrbitConfig) {
     this.paths = new PathService(config);
+    this.localResolver = new LocalResolverService(config);
   }
 
-  /**
-   * Parses a string into an OrbitQuery.
-   */
   parseQuery(query: string): OrbitQuery {
     if (query.startsWith('urn:orbit:')) {
       const parts = query.split(':');
@@ -55,135 +47,80 @@ export class LibraryService {
     return [];
   }
 
-  private async resolveLocal(query: OrbitQuery, options: ResolveOptions): Promise<ResolveResult[]> {
-    const gamesPath = this.paths.getLibraryPath('Games');
-    const results: ResolveResult[] = [];
-
-    try {
-      const platforms = options.platforms || await readdir(gamesPath);
-      
-      for (const platform of platforms) {
-        const platformPath = join(gamesPath, platform);
-        let gameFolders: string[] = [];
-        try {
-          gameFolders = await readdir(platformPath);
-        } catch {
-          continue;
-        }
-
-        for (const folder of gameFolders) {
-          const gamePaths = this.paths.getGamePaths(platform, folder);
-          let confidence: ConfidenceLevel = -1;
-          const ids: Record<string, string> = {};
-
-          if (query.type === 'name') {
-            if (folder.toLowerCase() === query.value.toLowerCase()) {
-              confidence = 1;
-            } else if (folder.toLowerCase().includes(query.value.toLowerCase())) {
-              confidence = 2;
-            }
-          }
-
-          if (query.type === 'serial') {
-            const serialMatch = folder.match(/\[(.*?)\]/);
-            if (serialMatch && serialMatch[1].toLowerCase() === query.value.toLowerCase()) {
-              confidence = query.platform === platform ? 0 : 1;
-              ids.serial = serialMatch[1];
-            }
-          }
-
-          if (query.type === 'path' && (gamePaths.absolute === query.value || folder === query.value)) {
-            confidence = 0;
-          }
-
-          if (confidence !== -1 || ['steam', 'igdb', 'serial'].includes(query.type)) {
-            const metadataPath = join(gamePaths.absolute, 'metadata', 'metadata.toml');
-            const orbitMetadataPath = join(gamePaths.absolute, 'orbit.metadata.toml');
-            
-            try {
-              const tomlContent = await readFile(metadataPath, 'utf-8').catch(() => readFile(orbitMetadataPath, 'utf-8'));
-              const metadata = parseToml(tomlContent) as any;
-              
-              if (metadata.source) {
-                if (metadata.source.steam) ids.steam = String(metadata.source.steam);
-                if (metadata.source.igdb) ids.igdb = String(metadata.source.igdb);
-              }
-
-              if (query.type === 'steam' && ids.steam === query.value) confidence = 0;
-              if (query.type === 'igdb' && ids.igdb === query.value) confidence = 0;
-              
-              if (confidence !== -1) {
-                results.push({
-                  confidence,
-                  confidenceDescription: CONFIDENCE_MAP[confidence],
-                  path: gamePaths.absolute,
-                  relativePath: gamePaths.relative,
-                  platform,
-                  name: folder,
-                  ids,
-                  metadata
-                });
-              }
-            } catch {
-              if (confidence !== -1) {
-                results.push({ 
-                  confidence, 
-                  confidenceDescription: CONFIDENCE_MAP[confidence],
-                  path: gamePaths.absolute, 
-                  relativePath: gamePaths.relative,
-                  platform, 
-                  name: folder, 
-                  ids 
-                });
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      Logger.error(`Local resolution failed: ${e}`);
-    }
-
-    return results;
-  }
-
   async resolve(queryString: string, options: ResolveOptions = {}): Promise<ResolveResult[]> {
     const query = this.parseQuery(queryString);
-    Logger.info(`Resolving ${query.type}: "${query.value}" (URN: ${query.isUrn})`);
-
+    const scope = options.scope || 'both';
+    
+    // 1. Try Cache
     const cacheResults = await this.resolveCache(query);
     if (cacheResults.length > 0) return cacheResults;
 
     let localResults: ResolveResult[] = [];
-    if (!options.remote) {
-      localResults = await this.resolveLocal(query, options);
+    if (scope === 'offline' || scope === 'both') {
+      localResults = await this.localResolver.resolve(query, options);
     }
 
-    if (localResults.some(r => r.confidence === 0)) {
+    // Offline-first: if exact local matches found and scope is not strictly remote, return them
+    if (localResults.some(r => r.confidence === 0) && scope !== 'remote') {
       return localResults.filter(r => r.confidence === 0);
     }
 
-    if (!options.offline && (options.remote || localResults.length === 0)) {
-      const remoteResults = await performSearch({
+    // 2. Remote resolution
+    let remoteResults: ResolveResult[] = [];
+    if (scope === 'remote' || scope === 'both') {
+      const searchRes = await performSearch({
         type: query.type === 'serial' || query.type === 'path' || query.type === 'urn' ? 'name' : query.type,
         query: query.value,
         offline: false
       }, this.config);
 
-      const mappedRemote = remoteResults.map(r => {
+      remoteResults = searchRes.map(r => {
         const confidence: ConfidenceLevel = 2;
+
+        // Use r.platform if present, otherwise use the first platform from options as a hint
+        const hintedPlatform = r.platform || (options.platforms && options.platforms.length === 1 ? options.platforms[0] : undefined);
+
+        // Calculate potential paths for remote results if platform is known or hinted
+        let potentialLocal = undefined;
+        if (hintedPlatform) {
+          const gamePaths = this.paths.getGamePaths(hintedPlatform, r.name);
+          potentialLocal = {
+            path: gamePaths.absolute,
+            relativePath: gamePaths.relative,
+            exists: false,
+            hasMetadata: false,
+            hasScreenshots: false,
+            hasSavedata: false,
+          };
+        }
+
         return {
           confidence,
-          confidenceDescription: CONFIDENCE_MAP[confidence],
+          confidenceDescription: CONFIDENCE_MAP[2],
           name: r.name,
           ids: r.ids,
-          platform: r.platform
+          platform: hintedPlatform,
+          source: r.source,
+          local: potentialLocal,
+          metadata: r.metadata || r // Preserve full raw metadata
         };
       });
-
-      return [...localResults, ...mappedRemote];
     }
 
-    return localResults;
+    // Combine and return
+    const allResults = [...localResults, ...remoteResults];
+    
+    // Simple deduplication by IDs if possible
+    const seen = new Set<string>();
+    return allResults.filter(r => {
+      // Create a unique key based on IDs or name+platform
+      const idKey = r.ids.igdb ? `igdb:${r.ids.igdb}` : 
+                   (r.ids.steam ? `steam:${r.ids.steam}` : 
+                   (r.ids.serial ? `serial:${r.ids.serial}` : `name:${r.name}:${r.platform}`));
+      
+      if (seen.has(idKey)) return false;
+      seen.add(idKey);
+      return true;
+    });
   }
 }

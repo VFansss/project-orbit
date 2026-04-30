@@ -21,20 +21,32 @@ export type ConfidenceLevel = keyof typeof CONFIDENCE_MAP;
 
 export interface ResolveOptions {
   platforms?: string[];
-  offline?: boolean;
-  remote?: boolean;
+  content?: ('games' | 'userdata')[];
+  scope?: 'offline' | 'remote' | 'both';
+  offline?: boolean; // Legacy/shorthand
+  remote?: boolean;  // Legacy/shorthand
   json?: boolean;
 }
 
 export interface ResolveResult {
   confidence: ConfidenceLevel;
   confidenceDescription: string;
-  path?: string;          // Absolute path if exists
-  relativePath?: string;  // Library-relative path (e.g. Games/pc/XCOM 2)
-  platform?: string;
   name: string;
+  platform?: string;
+  source?: string; // e.g. 'local', 'igdb', 'steam'
   ids: Record<string, string>;
-  metadata?: any;
+  
+  // Local File-System info
+  local?: {
+    path: string;           // Absolute path (usually in Games)
+    relativePath: string;   // e.g. Games/pc/XCOM 2
+    exists: boolean;        // True if folder exists in Games
+    hasMetadata: boolean;   // True if metadata.toml exists
+    hasScreenshots: boolean;
+    hasSavedata: boolean;
+  };
+
+  metadata?: any; // Full metadata if requested or available
 }
 
 /**

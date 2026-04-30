@@ -33,12 +33,12 @@ export async function searchGames(
 
   if (type === 'steam') {
     endpoint = 'external_games';
-    apicalypseBody = `fields game.name, game.first_release_date, game.id; where uid = "${query}" & external_game_source = 1;`;
+    apicalypseBody = `fields game.*, game.external_games.*; where uid = "${query}" & external_game_source = 1;`;
   } else if (type === 'igdb') {
-    apicalypseBody = `fields name, first_release_date, summary; where id = ${query};`;
+    apicalypseBody = `fields *, external_games.*; where id = ${query};`;
   } else {
     // Requesting external_games to get Steam IDs (source 1)
-    apicalypseBody = `search "${query}"; fields name, first_release_date, summary, external_games.uid, external_games.external_game_source; limit 10;`;
+    apicalypseBody = `search "${query}"; fields *, external_games.*; limit 10;`;
   }
 
   Logger.debug(`[IGDB] Requesting endpoint: ${endpoint}`);
@@ -66,12 +66,7 @@ export async function searchGames(
   if (type === 'steam') {
     return rawData
       .filter(item => item && item.game)
-      .map(item => ({
-        id: item.game.id,
-        name: item.game.name || item.name || 'Unknown Game',
-        first_release_date: item.game.first_release_date,
-        summary: '' 
-      }));
+      .map(item => item.game); // Return the full game object
   }
 
   return rawData as IGDBGame[];

@@ -18,6 +18,7 @@ export const SearchResultSchema = z.object({
   platform: z.string().optional(),
   ids: z.record(z.string()).default({}),
   localPath: z.string().optional(),
+  metadata: z.any().optional(),
 });
 
 export type SearchResult = z.infer<typeof SearchResultSchema>;

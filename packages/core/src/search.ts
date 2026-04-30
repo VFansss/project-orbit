@@ -41,7 +41,8 @@ export async function performSearch(options: SearchOptions, config: OrbitConfig)
             id: String(g.id),
             name: g.name,
             year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : undefined,
-            ids: resIds
+            ids: resIds,
+            metadata: g
           };
         });
         
