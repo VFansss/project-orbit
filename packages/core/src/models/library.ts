@@ -12,7 +12,7 @@ export interface LibraryStatus {
 export const CONFIDENCE_MAP = {
   0: 'Exact match (ID, Path, Serial+Platform)',
   1: 'High confidence (Exact Folder Name, Serial without Platform)',
-  2: 'Medium confidence (Fuzzy Match, Alias, Remote Result)',
+  2: 'Medium confidence (Fuzzy Match, Alias, Online Result)',
   3: 'Low confidence (Multiple vague matches)',
   '-1': 'No match'
 } as const;
@@ -22,9 +22,7 @@ export type ConfidenceLevel = keyof typeof CONFIDENCE_MAP;
 export interface ResolveOptions {
   platforms?: string[];
   content?: ('games' | 'userdata')[];
-  scope?: 'offline' | 'remote' | 'both';
-  offline?: boolean; // Legacy/shorthand
-  remote?: boolean;  // Legacy/shorthand
+  scope?: 'local' | 'online' | 'both';
   json?: boolean;
 }
 

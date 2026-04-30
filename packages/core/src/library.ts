@@ -56,31 +56,31 @@ export class LibraryService {
     if (cacheResults.length > 0) return cacheResults;
 
     let localResults: ResolveResult[] = [];
-    if (scope === 'offline' || scope === 'both') {
+    if (scope === 'local' || scope === 'both') {
       localResults = await this.localResolver.resolve(query, options);
     }
 
-    // Offline-first: if exact local matches found and scope is not strictly remote, return them
-    if (localResults.some(r => r.confidence === 0) && scope !== 'remote') {
+    // Offline-first: if exact local matches found and scope is not strictly online, return them
+    if (localResults.some(r => r.confidence === 0) && scope !== 'online') {
       return localResults.filter(r => r.confidence === 0);
     }
 
-    // 2. Remote resolution
-    let remoteResults: ResolveResult[] = [];
-    if (scope === 'remote' || scope === 'both') {
+    // 2. Online resolution
+    let onlineResults: ResolveResult[] = [];
+    if (scope === 'online' || scope === 'both') {
       const searchRes = await performSearch({
         type: query.type === 'serial' || query.type === 'path' || query.type === 'urn' ? 'name' : query.type,
         query: query.value,
         offline: false
       }, this.config);
 
-      remoteResults = searchRes.map(r => {
+      onlineResults = searchRes.map(r => {
         const confidence: ConfidenceLevel = 2;
 
         // Use r.platform if present, otherwise use the first platform from options as a hint
         const hintedPlatform = r.platform || (options.platforms && options.platforms.length === 1 ? options.platforms[0] : undefined);
 
-        // Calculate potential paths for remote results if platform is known or hinted
+        // Calculate potential paths for online results if platform is known or hinted
         let potentialLocal = undefined;
         if (hintedPlatform) {
           const gamePaths = this.paths.getGamePaths(hintedPlatform, r.name);
@@ -108,7 +108,7 @@ export class LibraryService {
     }
 
     // Combine and return
-    const allResults = [...localResults, ...remoteResults];
+    const allResults = [...localResults, ...onlineResults];
     
     // Simple deduplication by IDs if possible
     const seen = new Set<string>();

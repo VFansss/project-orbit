@@ -67,41 +67,46 @@ export default (cli: CAC) => {
   }
 
   cli
-    .command('search [query]', 'Search for games in library or online')
+    .command('search [val1] [val2]', 'Search for games in library or online')
     .option('--platform <platform>', 'Filter by platform (comma separated)')
     .option('--content <type>', 'Filter local content (games, userdata)')
-    .option('--offline', 'Search only in local library')
-    .option('--remote', 'Search only online')
-    .option('--both', 'Search both local and online (default)')
     .option('--metadata', 'Show full metadata details')
+    .option('--no-metadata', 'Explicitly hide metadata and skip prompt')
     .option('--json', 'Output results in JSON format')
-    .action(async (query: string | undefined, flags: any) => {
+    .action(async (val1: string | undefined, val2: string | undefined, flags: any) => {
       const config = await loadConfig()
       const library = new LibraryService(config)
 
-      // Determine scope
-      let scope: 'offline' | 'remote' | 'both' = 'both'
-      const hasScopeFlag = flags.offline || flags.remote || flags.both
+      // Determine scope and query
+      let scope: 'local' | 'online' | 'both' = 'both'
+      let targetQuery: string | undefined = undefined
+
+      const validScopes = ['local', 'online', 'both']
       
-      if (flags.offline) scope = 'offline'
-      else if (flags.remote) scope = 'remote'
-      else if (flags.both) scope = 'both'
-      else if (!flags.json) {
-        // Always prompt if no flag is present and we are in a TTY
-        p.intro('\x1b[34mOrbit Search\x1b[0m')
-        const selectedScope = await p.select({
-          message: 'Select search scope:',
-          options: [
-            { value: 'offline', label: 'Local Only (Offline)', hint: 'Fastest, scans your library' },
-            { value: 'remote', label: 'Online Only (Remote)', hint: 'Search IGDB/Steam' },
-            { value: 'both', label: 'Both (Default)', hint: 'Offline-first, then remote' }
-          ]
-        })
-        if (p.isCancel(selectedScope)) process.exit(0)
-        scope = selectedScope as any
+      if (val1 && validScopes.includes(val1)) {
+        scope = val1 as any
+        targetQuery = val2
+      } else {
+        targetQuery = val1
       }
 
-      let targetQuery = query
+      // If no scope was explicitly provided as first argument, and we are interactive
+      if (!val1 || (!validScopes.includes(val1) && !flags.json)) {
+        if (!flags.json) {
+          p.intro('\x1b[34mOrbit Search\x1b[0m')
+          const selectedScope = await p.select({
+            message: 'Select search scope:',
+            options: [
+              { value: 'local', label: 'Local Only', hint: 'Fastest, scans your library' },
+              { value: 'online', label: 'Online Only', hint: 'Search IGDB/Steam' },
+              { value: 'both', label: 'Both (Default)', hint: 'Local-first, then online' }
+            ]
+          })
+          if (p.isCancel(selectedScope)) process.exit(0)
+          scope = selectedScope as any
+        }
+      }
+
       if (!targetQuery && !flags.json) {
         displayUrnLegend()
         const response = await p.text({
@@ -118,9 +123,11 @@ export default (cli: CAC) => {
         process.exit(1)
       }
 
-      // Ask for metadata if remote and not specified
+      // Ask for metadata if online and not specified (and not explicitly disabled)
       let showMetadata = flags.metadata
-      if (!showMetadata && scope !== 'offline' && !flags.json) {
+      if (flags.metadata === false) showMetadata = false; // --no-metadata sets metadata: false
+      
+      if (showMetadata === undefined && scope !== 'local' && !flags.json) {
         const wantMetadata = await p.confirm({
           message: 'Do you want to see the full metadata for the results?',
           initialValue: false
