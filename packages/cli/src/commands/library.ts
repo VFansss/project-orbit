@@ -8,9 +8,9 @@ import { resolvePath, getSuggestedLibraryPath } from '../paths'
 
 export default (cli: CAC) => {
   cli
-    .command('library set [path]', 'Set or initialize the active library directory')
-    .action(async (path?: string) => {
-      let targetPath = path
+    .command('library [action] [path]', 'Set or initialize the active library directory')
+    .action(async (action?: string, path?: string) => {
+      let targetPath = action === 'set' ? path : action
       
       if (!targetPath) {
         p.intro('\x1b[34mLibrary Setup\x1b[0m')
