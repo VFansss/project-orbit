@@ -13,10 +13,24 @@ export class PathService {
   }
 
   /**
+   * Sanitizes a string and formats it as a valid folder name: "Name (Year)".
+   */
+  static getSafeFolderName(name: string, year?: number): string {
+    // Windows illegal: \ / : * ? " < > |
+    const cleanName = name
+      .replace(/[\\/:*?"<>|]/g, '')
+      .trim()
+      .replace(/\.+$/, '');
+    
+    return year ? `${cleanName} (${year})` : cleanName;
+  }
+
+  /**
    * Calculates paths for a game result.
    */
-  getGamePaths(platform: string, folderName: string) {
-    const relativePath = join('Games', platform, folderName);
+  getGamePaths(platform: string, folderName: string, year?: number) {
+    const safeName = PathService.getSafeFolderName(folderName, year);
+    const relativePath = join('Games', platform, safeName);
     const absolutePath = join(this.getLibraryPath(), relativePath);
     
     return {
@@ -26,27 +40,11 @@ export class PathService {
   }
 
   /**
-   * Returns the staging area path.
-   */
-  getStagingPath(subPath?: string): string {
-    const staging = join(this.getLibraryPath(), '_Staging');
-    return subPath ? join(staging, subPath) : staging;
-  }
-
-  /**
-   * Helper to make a path relative to the library root for display.
-   */
-  toLibraryRelative(fullPath: string): string {
-    const root = this.getLibraryPath();
-    if (!fullPath.startsWith(root)) return fullPath;
-    return relative(root, fullPath);
-  }
-
-  /**
    * Returns the central metadata path for a game.
    */
-  getMetadataPath(platform: string, folderName: string) {
-    const relativePath = join('Metadata', platform, folderName);
+  getMetadataPath(platform: string, folderName: string, year?: number) {
+    const safeName = PathService.getSafeFolderName(folderName, year);
+    const relativePath = join('Metadata', platform, safeName);
     const absolutePath = join(this.getLibraryPath(), relativePath);
     
     return {

@@ -71,7 +71,7 @@ export class LocalResolverService {
         confidence = 0;
       }
 
-      // 4. Metadata check for IDs and extra info
+      // 4. Authoritative Metadata check
       let metadata: any = null;
       const metadataPath = this.paths.getMetadataPath(platform, folder).file;
       const hasMetadata = await this.checkPathExists(metadataPath);
@@ -99,13 +99,26 @@ export class LocalResolverService {
       }
 
       if (confidence !== -1) {
-        // Build exhaustive local status
         const gamesRoot = this.paths.getLibraryPath('Games');
         const userDataRoot = this.paths.getLibraryPath('UserData');
         
         const gameFolderPath = join(gamesRoot, platform, folder);
-        const screenshotPath = join(userDataRoot, 'Screenshots', platform, folder);
-        const savedataPath = join(userDataRoot, 'Savedata', platform, folder);
+        const existsInGames = await this.checkPathExists(gameFolderPath);
+
+        // Check UserData across ALL users to see if screenshots/savedata exist anywhere
+        let hasScreenshots = false;
+        let hasSavedata = false;
+        try {
+          const users = await readdir(userDataRoot);
+          for (const user of users) {
+            if (!hasScreenshots) {
+              hasScreenshots = await this.checkPathExists(join(userDataRoot, user, 'screenshots', platform, folder));
+            }
+            if (!hasSavedata) {
+              hasSavedata = await this.checkPathExists(join(userDataRoot, user, 'savedata', platform, folder));
+            }
+          }
+        } catch {}
 
         results.push({
           confidence,
@@ -117,10 +130,10 @@ export class LocalResolverService {
           local: {
             path: gameFolderPath,
             relativePath: join('Games', platform, folder),
-            exists: await this.checkPathExists(gameFolderPath),
+            exists: existsInGames,
             hasMetadata,
-            hasScreenshots: await this.checkPathExists(screenshotPath),
-            hasSavedata: await this.checkPathExists(savedataPath),
+            hasScreenshots,
+            hasSavedata,
           },
           metadata
         });
@@ -132,7 +145,7 @@ export class LocalResolverService {
 
   async resolve(query: OrbitQuery, options: ResolveOptions): Promise<ResolveResult[]> {
     const results: ResolveResult[] = [];
-    const contents = options.content || ['games', 'userdata'];
+    const contents = options.content || ['games', 'userdata', 'metadata'];
     const libraryRoot = this.paths.getLibraryPath();
     
     // Collect all platforms to scan
@@ -143,32 +156,79 @@ export class LocalResolverService {
         const p = await readdir(join(libraryRoot, 'Games')).catch(() => []);
         p.forEach(x => pSet.add(x));
       }
+      if (contents.includes('metadata')) {
+        const p = await readdir(join(libraryRoot, 'Metadata')).catch(() => []);
+        p.forEach(x => pSet.add(x));
+      }
       if (contents.includes('userdata')) {
-        const screenshotPlatforms = await readdir(join(libraryRoot, 'UserData', 'Screenshots')).catch(() => []);
-        const savedataPlatforms = await readdir(join(libraryRoot, 'UserData', 'Savedata')).catch(() => []);
-        screenshotPlatforms.forEach(x => pSet.add(x));
-        savedataPlatforms.forEach(x => pSet.add(x));
+        try {
+          const users = await readdir(join(libraryRoot, 'UserData'));
+          for (const user of users) {
+            const userRoot = join(libraryRoot, 'UserData', user);
+            const sPlats = await readdir(join(userRoot, 'screenshots')).catch(() => []);
+            const dPlats = await readdir(join(userRoot, 'savedata')).catch(() => []);
+            sPlats.forEach(p => pSet.add(p));
+            dPlats.forEach(p => pSet.add(p));
+          }
+        } catch {}
       }
       platforms = Array.from(pSet);
     }
 
     for (const platform of platforms) {
-      if (contents.includes('games')) {
-        const res = await this.scanDirectory(join(libraryRoot, 'Games'), platform, query);
-        results.push(...res);
-      }
-      // If userdata is requested, we also look there, but we deduplicate by name+platform
-      if (contents.includes('userdata')) {
-        const sRes = await this.scanDirectory(join(libraryRoot, 'UserData', 'Screenshots'), platform, query);
-        const dRes = await this.scanDirectory(join(libraryRoot, 'UserData', 'Savedata'), platform, query);
-        
-        // Simple deduplication logic: if name+platform already in results, skip
-        [...sRes, ...dRes].forEach(r => {
-          if (!results.find(x => x.name === r.name && x.platform === r.platform)) {
-            results.push(r);
+      const platformResults: Map<string, ResolveResult> = new Map();
+
+      const mergeResults = (newResults: ResolveResult[]) => {
+        for (const res of newResults) {
+          const existing = platformResults.get(res.name);
+          if (existing) {
+            // Merge status flags
+            if (res.local) {
+              existing.local = {
+                ...existing.local!,
+                exists: existing.local!.exists || res.local.exists,
+                hasMetadata: existing.local!.hasMetadata || res.local.hasMetadata,
+                hasScreenshots: existing.local!.hasScreenshots || res.local.hasScreenshots,
+                hasSavedata: existing.local!.hasSavedata || res.local.hasSavedata,
+              };
+            }
+            // Prefer better confidence
+            if (res.confidence < existing.confidence) {
+              existing.confidence = res.confidence;
+              existing.confidenceDescription = res.confidenceDescription;
+            }
+            // Merge IDs
+            existing.ids = { ...existing.ids, ...res.ids };
+            // Merge Metadata
+            if (!existing.metadata && res.metadata) existing.metadata = res.metadata;
+          } else {
+            platformResults.set(res.name, res);
           }
-        });
+        }
+      };
+
+      // 1. Scan Games
+      if (contents.includes('games')) {
+        mergeResults(await this.scanDirectory(join(libraryRoot, 'Games'), platform, query));
       }
+      
+      // 2. Scan Metadata
+      if (contents.includes('metadata')) {
+        mergeResults(await this.scanDirectory(join(libraryRoot, 'Metadata'), platform, query));
+      }
+
+      // 3. Scan UserData
+      if (contents.includes('userdata')) {
+        try {
+          const users = await readdir(join(libraryRoot, 'UserData'));
+          for (const user of users) {
+            mergeResults(await this.scanDirectory(join(libraryRoot, 'UserData', user, 'screenshots'), platform, query));
+            mergeResults(await this.scanDirectory(join(libraryRoot, 'UserData', user, 'savedata'), platform, query));
+          }
+        } catch {}
+      }
+
+      results.push(...Array.from(platformResults.values()));
     }
 
     return results;

@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 import * as p from '@clack/prompts'
-import { LibraryService, URN_DEFINITIONS, type ResolveResult } from '@orbit/core'
+import { LibraryService, URN_DEFINITIONS, type ResolveResult, mapIGDBToGame } from '@orbit/core'
 import { loadConfig } from '../storage'
 
 export default (cli: CAC) => {
@@ -72,6 +72,7 @@ export default (cli: CAC) => {
     .option('--content <type>', 'Filter local content (games, userdata)')
     .option('--metadata', 'Show full metadata details')
     .option('--no-metadata', 'Explicitly hide metadata and skip prompt')
+    .option('--save', 'Save metadata of the online result to the local library')
     .option('--json', 'Output results in JSON format')
     .action(async (val1: string | undefined, val2: string | undefined, flags: any) => {
       const config = await loadConfig()
@@ -161,8 +162,11 @@ export default (cli: CAC) => {
           return
         }
 
+        let selectedResult: ResolveResult;
+
         if (results.length === 1) {
-          printResult(results[0], showMetadata)
+          selectedResult = results[0]
+          printResult(selectedResult, showMetadata)
         } else {
           console.log('\n\x1b[34m--- Multiple Matches Found ---\x1b[0m')
           const options = results.map((r, i) => {
@@ -183,7 +187,25 @@ export default (cli: CAC) => {
           })
 
           if (p.isCancel(selected)) process.exit(0)
-          printResult(results[selected as number], showMetadata)
+          selectedResult = results[selected as number]
+          printResult(selectedResult, showMetadata)
+        }
+
+        if (flags.save) {
+          if (selectedResult.source === 'igdb') {
+            const sSave = p.spinner()
+            sSave.start('Saving metadata to library...')
+            try {
+              const game = mapIGDBToGame(selectedResult.metadata)
+              const path = await library.saveMetadata(game)
+              sSave.stop(`Metadata saved at: ${path}`)
+            } catch (err: any) {
+              sSave.stop('Failed to save metadata.', 1)
+              console.error(`\x1b[31mError:\x1b[0m ${err.message}`)
+            }
+          } else {
+            console.log('\n\x1b[33mNote:\x1b[0m Save skipped. Metadata saving is only available for online searches')
+          }
         }
       } catch (err: any) {
         if (s) s.stop('Search failed.', 1)

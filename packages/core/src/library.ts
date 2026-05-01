@@ -1,10 +1,14 @@
-import { CONFIDENCE_MAP, type ResolveOptions, type ResolveResult } from './models/library';
+import { CONFIDENCE_MAP, type ResolveOptions, type ResolveResult, type ConfidenceLevel } from './models/library';
 import type { SearchType } from './models/search';
 import { Logger } from './logger';
 import { performSearch } from './search';
 import { PathService } from './paths';
 import { LocalResolverService } from './local-resolver';
 import type { OrbitConfig } from './models/config';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { stringify } from 'smol-toml';
+import { mapGameToMetadata } from './mappers/metadata';
+import type { Game } from './models/game';
 
 export interface OrbitQuery {
   type: SearchType;
@@ -21,6 +25,26 @@ export class LibraryService {
     this.paths = new PathService(config);
     this.localResolver = new LocalResolverService(config);
   }
+
+  /**
+   * Persists a Game object's metadata to the central Metadata folder.
+   */
+  async saveMetadata(game: Game): Promise<string> {
+    if (game.platform === 'unknown') {
+      throw new Error(`Cannot save metadata for unknown platform: ${game.name}`);
+    }
+
+    const metaPath = this.paths.getMetadataPath(game.platform, game.name, game.metadata.general.release_year);
+    const tomlData = mapGameToMetadata(game);
+    const content = stringify(tomlData);
+
+    await mkdir(metaPath.absolute, { recursive: true });
+    await writeFile(metaPath.file, content);
+
+    Logger.info(`Metadata saved for ${game.name} [${game.platform}] at ${metaPath.relative}`);
+    return metaPath.file;
+  }
+
 
   parseQuery(query: string): OrbitQuery {
     if (query.startsWith('urn:orbit:')) {
@@ -83,7 +107,7 @@ export class LibraryService {
         // Calculate potential paths for online results if platform is known or hinted
         let potentialLocal = undefined;
         if (hintedPlatform) {
-          const gamePaths = this.paths.getGamePaths(hintedPlatform, r.name);
+          const gamePaths = this.paths.getGamePaths(hintedPlatform, r.name, r.year);
           potentialLocal = {
             path: gamePaths.absolute,
             relativePath: gamePaths.relative,
