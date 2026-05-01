@@ -1,12 +1,27 @@
 # Library Structure
 
-**General structure:**
+**General structure or root folder:**
 
+- **_Staging**
+  - A folder that will contain contant parsed (or to be parsed) by Orbit. After the processing it could be merged with the main library
+  - Is prefixed by "_" to always be first in alphabetic folder ordering
+  - Inside it, you will have the SAME structur you could have inside the root folder itself
+    - e.g. "_Staging\Games\<platform folder>\<game folder>\<content>"
+    - e.g. "_Staging\UserData\screenshots\<platform folder>\<game folder>\<content>"
+    - It can't contain another "_Staging" folder
+- **Metadata**
+  - The central database of the library.
+  - Contains all game-related information and media.
+  - **Platform Folders**
+    - **Game Folders**
+      - `metadata.toml`: The main information file for the game.
+      - `media/`: Subfolder for covers, artworks, icons, etc.
 - **Games**
-  - Main content: games divided by platform
-  - **Platform Folders** - more details [here](#platform-folders)
     - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
-    - **Game Folders** - more details [here](#game-folders)
+  - Main content: games divided by platform.
+  - **Platform Folders**
+    - **Game Folders**
+      - Contains only the game binaries/files.
 - **UserData** - more details [here](#userdata)
 - **Exports**
   - Will contain inner folders usable by external tools like EmulationStation or Romm
@@ -27,6 +42,34 @@ Example:
 created_at = 2026-04-23T19:32:42.188Z
 ```
 
+## Metadata
+
+This folder is the "Brain" of the library. It stores all persistent information about games that is shared across all users.
+
+### Game Folders - metadata
+
+Each game folder in `Metadata/<platform>/<game>/` contains:
+
+#### metadata.toml
+
+The only file that should be manually edited by the user. It contains general information, IDs, and source links.
+
+Example:
+
+```toml
+[general]
+name = "Grand Theft Auto V"
+aliases = ["GTA V","GTA 5"]
+igdb = "1020"
+steam = "271590"
+
+[source]
+source = ["GOG","DVD Rip"] 
+```
+
+#### media
+
+Contains visual assets for the game. These are usually managed by Orbit and should be treated as read-only.
 
 ## Games
 
@@ -34,23 +77,13 @@ created_at = 2026-04-23T19:32:42.188Z
 
 #### Game Folders
 
-Note: this kind of folder can be in multiple locations. To check what has in common for every instance, check more details [here](#game-folders---general-details)
-
-Generally speaking, every file here is intended as "part" of the game.
-
-There's a single exception: a file called `orbit.metadata.toml` can be inside the Game Folder. This is exactly the same file we could expect in `metadata\metadata.toml`, it's just an alternative location. The rationale is to avoid the metadata folder creation if there's avoidable.
-
-However, if the `metadata` folder is created, the file will be automatically moved into the relative folder, and will be renamed accordingly.
+Generally speaking, every file here is intended as "part" of the game (binaries, data files, etc.).
+No metadata or orbit-specific configuration files should be stored here.
 
 **Content:**
 
 Each gamefolder COULD have one of these subfolders
 
-- `metadata`
-  - Will contain subfolders of various metadata files (e.g. cover, artwork, icons, descriptions)
-  - Will contain a file called `metadata.toml` with informations about the game
-  - Will contain other kind of metadata, if retrieved from other sources
-  - More detail [here](#game-folders---metadata)
 - `checksum`
   - Will contain files used to calculate EVERY files inside the main game folder, with certain exceptions
   - More details [here](#game-folders---checksum)
@@ -58,32 +91,6 @@ Each gamefolder COULD have one of these subfolders
   - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
   - These kind of subfolders are, in fact, game folders
   - This is not recursive: if a "game edition" folder have inner subfolders with a name not present above, they will be ignored/treated accordingly
-
-##### metadata
-
-Metadata folder will contain metadata about the game itself.
-
-Only the file called `metadata.toml` should be edited by the user
-
-If other files are present, they should be treated as a "read only" content, and should be not manually edited by the user 
-
-**Content:**
-
-###### metadata.toml
-
-If inside game folder (and only then) can also be called `orbit.metadata.toml`
-
-Will contain data regarding the game/folder itself
-
-Example:
-
-```toml
-[general]
-aliases = ["Grand Theft Auto V","GTA V","GTA 5"]
-
-[source]
-source = ["GOG","DVD Rip","https://devwebsite.com"] 
-```
 
 ##### checksum
 

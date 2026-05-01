@@ -6,6 +6,8 @@ export interface IGDBGame {
   name: string;
   first_release_date?: number;
   summary?: string;
+  platforms?: number[];
+  alternative_names?: Array<{ id: number; name: string }>;
   external_games?: Array<{
     uid: string;
     external_game_source: number;
@@ -33,12 +35,12 @@ export async function searchGames(
 
   if (type === 'steam') {
     endpoint = 'external_games';
-    apicalypseBody = `fields game.*, game.external_games.*; where uid = "${query}" & external_game_source = 1;`;
+    apicalypseBody = `fields game.name, game.first_release_date, game.summary, game.platforms, game.alternative_names.name, game.external_games.*; where uid = "${query}" & external_game_source = 1;`;
   } else if (type === 'igdb') {
-    apicalypseBody = `fields *, external_games.*; where id = ${query};`;
+    apicalypseBody = `fields name, first_release_date, summary, platforms, alternative_names.name, external_games.*; where id = ${query};`;
   } else {
     // Requesting external_games to get Steam IDs (source 1)
-    apicalypseBody = `search "${query}"; fields *, external_games.*; limit 10;`;
+    apicalypseBody = `search "${query}"; fields name, first_release_date, summary, platforms, alternative_names.name, external_games.*; limit 10;`;
   }
 
   Logger.debug(`[IGDB] Requesting endpoint: ${endpoint}`);

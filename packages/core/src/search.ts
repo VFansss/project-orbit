@@ -2,6 +2,7 @@ import { searchGames } from './integrations/igdb';
 import type { SearchResult, SearchType } from './models/search';
 import type { OrbitConfig } from './models/config';
 import { Logger } from './logger';
+import { mapIGDBToGame } from './mappers/igdb';
 
 export interface SearchOptions {
   type: SearchType;
@@ -30,19 +31,16 @@ export async function performSearch(options: SearchOptions, config: OrbitConfig)
         );
         
         const mapped = igdbGames.map(g => {
-          const resIds: Record<string, string> = { igdb: String(g.id) };
+          const game = mapIGDBToGame(g);
           
-          // Find Steam ID in external_games if available (source 1)
-          const steamEntry = g.external_games?.find(ext => ext.external_game_source === 1);
-          if (steamEntry) resIds.steam = steamEntry.uid;
-
           return {
             source: 'igdb' as const,
             id: String(g.id),
-            name: g.name,
-            year: g.first_release_date ? new Date(g.first_release_date * 1000).getFullYear() : undefined,
-            ids: resIds,
-            metadata: g
+            name: game.name,
+            year: game.metadata.general.release_year,
+            platform: game.platform === 'unknown' ? undefined : game.platform,
+            ids: game.ids,
+            metadata: g // We still keep the raw IGDB metadata for the UI if needed
           };
         });
         

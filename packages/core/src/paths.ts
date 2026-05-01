@@ -29,7 +29,7 @@ export class PathService {
    * Returns the staging area path.
    */
   getStagingPath(subPath?: string): string {
-    const staging = join(this.getLibraryPath(), '_staging');
+    const staging = join(this.getLibraryPath(), '_Staging');
     return subPath ? join(staging, subPath) : staging;
   }
 
@@ -40,5 +40,19 @@ export class PathService {
     const root = this.getLibraryPath();
     if (!fullPath.startsWith(root)) return fullPath;
     return relative(root, fullPath);
+  }
+
+  /**
+   * Returns the central metadata path for a game.
+   */
+  getMetadataPath(platform: string, folderName: string) {
+    const relativePath = join('Metadata', platform, folderName);
+    const absolutePath = join(this.getLibraryPath(), relativePath);
+    
+    return {
+      relative: relativePath,
+      absolute: absolutePath,
+      file: join(absolutePath, 'metadata.toml')
+    };
   }
 }

@@ -10,6 +10,7 @@ import {
 import type { OrbitQuery } from './library';
 import { PathService } from './paths';
 import type { OrbitConfig } from './models/config';
+import { Logger } from './logger';
 
 export class LocalResolverService {
   private paths: PathService;
@@ -72,14 +73,12 @@ export class LocalResolverService {
 
       // 4. Metadata check for IDs and extra info
       let metadata: any = null;
-      const metadataPath = join(fullPath, 'metadata', 'metadata.toml');
-      const orbitMetadataPath = join(fullPath, 'orbit.metadata.toml');
-      
-      const hasMetadataFile = await this.checkPathExists(metadataPath) || await this.checkPathExists(orbitMetadataPath);
+      const metadataPath = this.paths.getMetadataPath(platform, folder).file;
+      const hasMetadata = await this.checkPathExists(metadataPath);
 
-      if (hasMetadataFile) {
+      if (hasMetadata) {
         try {
-          const tomlContent = await readFile(metadataPath, 'utf-8').catch(() => readFile(orbitMetadataPath, 'utf-8'));
+          const tomlContent = await readFile(metadataPath, 'utf-8');
           metadata = parseToml(tomlContent) as any;
           
           const getField = (obj: any, key: string) => obj[key] || obj.source?.[key] || obj.general?.[key];
@@ -95,7 +94,7 @@ export class LocalResolverService {
           if (query.type === 'steam' && ids.steam === query.value) confidence = 0;
           if (query.type === 'igdb' && ids.igdb === query.value) confidence = 0;
         } catch (e) {
-          Logger.debug(`Failed to parse metadata for ${folder}: ${e}`);
+          Logger.debug(`Failed to parse metadata for ${folder} at ${metadataPath}: ${e}`);
         }
       }
 
@@ -119,7 +118,7 @@ export class LocalResolverService {
             path: gameFolderPath,
             relativePath: join('Games', platform, folder),
             exists: await this.checkPathExists(gameFolderPath),
-            hasMetadata: hasMetadataFile,
+            hasMetadata,
             hasScreenshots: await this.checkPathExists(screenshotPath),
             hasSavedata: await this.checkPathExists(savedataPath),
           },
