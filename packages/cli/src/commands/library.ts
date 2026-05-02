@@ -4,12 +4,39 @@ import { Orbit, LIBRARY_MARKER } from '@orbit/core'
 import { loadConfig, saveConfig } from '../storage'
 import { join } from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { exec } from 'node:child_process'
+import { platform as osPlatform } from 'node:os'
 import { resolvePath, getSuggestedLibraryPath } from '../paths'
+
+function openFolder(folderPath: string) {
+  const os = osPlatform()
+  if (os === 'win32') {
+    exec(`start "" "${folderPath}"`)
+  } else if (os === 'darwin') {
+    exec(`open "${folderPath}"`)
+  } else {
+    exec(`xdg-open "${folderPath}"`)
+  }
+}
 
 export default (cli: CAC) => {
   cli
-    .command('library [action] [path]', 'Set or initialize the active library directory')
+    .command('library [action] [path]', 'Manage the library directory (set, init, open)')
     .action(async (action?: string, path?: string) => {
+      // Handle the 'open' action specifically
+      if (action === 'open') {
+        const config = await loadConfig()
+        if (!config.currentLibraryPath) {
+          console.error(`\x1b[31mError:\x1b[0m No active library. Please initialize one first using 'orbit library'.`)
+          process.exit(1)
+        }
+        
+        console.log(`\x1b[34mOpening library folder:\x1b[0m ${config.currentLibraryPath}`)
+        openFolder(config.currentLibraryPath)
+        return
+      }
+
+      // Default behavior (set / init)
       let targetPath = action === 'set' ? path : action
       
       if (!targetPath) {
