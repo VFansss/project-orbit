@@ -7,6 +7,7 @@ export * from './models/search';
 export * from './models/game';
 export * from './mappers/igdb';
 export * from './mappers/metadata';
+export * from './formats/FileFormatRegistry';
 export * from './library';
 export * from './paths';
 export * from './integrations/igdb';
