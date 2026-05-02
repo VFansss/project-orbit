@@ -12,7 +12,7 @@ export default (cli: CAC) => {
   cli
     .command('screenshot [action] [path]', 'Manage screenshots (parse, sync)')
     .option('--platform <platform>', 'Default platform for screenshots')
-    .option('--recursive', 'Scan source directory recursively', { default: false })
+    .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('--dry-run', 'Show what would be done without making changes', { default: false })
     .option('--copy', 'Copy files instead of moving them', { default: false })
     .action(async (action?: string, path?: string, flags?: any) => {
