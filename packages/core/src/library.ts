@@ -51,6 +51,32 @@ export class LibraryService {
   }
 
   /**
+   * Reads the ignore list from the library root.
+   */
+  async getIgnores(): Promise<string[]> {
+    try {
+      const ignorePath = join(this.paths.getLibraryPath(), 'orbit.ignores.toml');
+      const content = await readFile(ignorePath, 'utf8');
+      const data = parseToml(content) as { ignores?: string[] };
+      return data.ignores || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Adds a group name to the permanent ignore list.
+   */
+  async saveIgnore(groupName: string): Promise<void> {
+    const ignores = await this.getIgnores();
+    if (!ignores.includes(groupName)) {
+      ignores.push(groupName);
+      const ignorePath = join(this.paths.getLibraryPath(), 'orbit.ignores.toml');
+      await writeFile(ignorePath, stringify({ ignores }));
+    }
+  }
+
+  /**
    * Persists a Game object's metadata to the central Metadata folder.
    */
   async saveMetadata(game: Game): Promise<string> {

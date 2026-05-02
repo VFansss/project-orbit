@@ -241,12 +241,19 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
   // 5. Validation Loop (Batching)
   const batch = new OperationBatch()
   const groupNames = Array.from(groups.keys()).sort()
+  const ignores = await library.getIgnores()
+  
   let skippedCount = 0
   let lastSelectedGame: any = null
   
   p.log.step('Starting validation phase...')
   
   for (const groupName of groupNames) {
+    if (ignores.includes(groupName)) {
+      p.log.warn(`Skipping permanently ignored group: ${groupName}`)
+      continue
+    }
+
     const files = groups.get(groupName)!
     let selectedGame: any = null
     let groupResolved = false
@@ -283,7 +290,7 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
       }
       
       menuOptions.push({ value: 'search', label: 'Search', hint: 'Find locally/online for metadata, and save them if possible' })
-      menuOptions.push({ value: 'skip', label: 'Skip Group', hint: 'Do not process these files' })
+      menuOptions.push({ value: 'skip', label: 'Skip Group', hint: 'Skip this session or permanently' })
 
       const action = await p.select({
         message: `Action for group "${groupName}":`,
@@ -318,8 +325,25 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
         }
         // Loop repeats
       } else if (action === 'skip') {
-        groupResolved = true
-        selectedGame = null
+        const skipType = await p.select({
+          message: 'Skip Group Option:',
+          options: [
+            { value: 'once', label: 'Skip once', hint: 'For this session only' },
+            { value: 'perm', label: 'Ignore permanently', hint: 'Never ask again for this group name' },
+            { value: 'back', label: 'Go back', hint: 'Return to actions' }
+          ]
+        })
+
+        if (p.isCancel(skipType) || skipType === 'back') {
+          // Loop repeats (back to actions)
+        } else {
+          if (skipType === 'perm') {
+            await library.saveIgnore(groupName)
+            p.log.warn(`Group "${groupName}" added to permanent ignore list.`)
+          }
+          groupResolved = true
+          selectedGame = null
+        }
       } else if (action === 'search') {
         const query = await p.text({ message: 'Search query:', initialValue: groupName })
         if (p.isCancel(query)) process.exit(0)
