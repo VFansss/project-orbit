@@ -5,7 +5,8 @@ import { performSearch } from './search';
 import { PathService } from './paths';
 import { LocalResolverService } from './local-resolver';
 import type { OrbitConfig } from './models/config';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { stringify } from 'smol-toml';
 import { mapGameToMetadata } from './mappers/metadata';
 import type { Game } from './models/game';
@@ -64,6 +65,22 @@ export class LibraryService {
     }
 
     return { type: 'name', value: query, isUrn: false };
+  }
+
+  /**
+   * Returns a list of all platforms currently present in the library (Games and Metadata).
+   */
+  async getPlatforms(): Promise<string[]> {
+    const pSet = new Set<string>();
+    const libraryRoot = this.paths.getLibraryPath();
+
+    const gamesPlats = await readdir(join(libraryRoot, 'Games')).catch(() => []);
+    gamesPlats.forEach(p => pSet.add(p));
+
+    const metaPlats = await readdir(join(libraryRoot, 'Metadata')).catch(() => []);
+    metaPlats.forEach(p => pSet.add(p));
+
+    return Array.from(pSet).sort();
   }
 
   private async resolveCache(query: OrbitQuery): Promise<ResolveResult[]> {

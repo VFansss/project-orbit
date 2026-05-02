@@ -49,7 +49,7 @@ async function main() {
       cli.outputHelp()
     }
   } catch (error: any) {
-    console.error(`\n\x1b[31mError:\x1b[0m ${error.message}`)
+    console.error(`\n\x1b[31mError:\x1b[0m`, error)
     process.exit(1)
   }
 }

@@ -170,17 +170,25 @@ export default (cli: CAC) => {
         } else {
           console.log('\n\x1b[34m--- Multiple Matches Found ---\x1b[0m')
           const options = results.map((r, i) => {
-            const sourceLabel = r.local?.exists ? 'Local' : (r.source ? r.source.toUpperCase() : 'Remote')
+            const sourceLabel = r.local?.exists || r.local?.hasMetadata ? 'Local' : (r.source ? r.source.toUpperCase() : 'Remote')
             const platformLabel = r.platform ? ` [${r.platform}]` : ''
             const idsLabel = Object.entries(r.ids).map(([k, v]) => `${k}:${v}`).join(', ')
-            
+
+            const locs: string[] = []
+            if (r.local) {
+              if (r.local.exists) locs.push('Games')
+              if (r.local.hasMetadata) locs.push('Metadata')
+              if (r.local.hasSavedata) locs.push('Savedata')
+              if (r.local.hasScreenshots) locs.push('Screenshots')
+            }
+            const locStr = locs.length > 0 ? locs.join(' | ') : 'Remote'
+
             return {
               value: i,
               label: `${r.name}${platformLabel} (${sourceLabel})`,
-              hint: `Conf: ${r.confidence} | ${idsLabel} | ${r.local?.relativePath || 'Remote'}`
+              hint: `Conf: ${r.confidence} | ${idsLabel} | ${locStr}`
             }
           })
-
           const selected = await p.select({
             message: 'Which game did you mean?',
             options
