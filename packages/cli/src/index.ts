@@ -9,6 +9,7 @@ import registerLibrary from './commands/library'
 import registerScreenshot from './commands/screenshot'
 import registerConfig from './commands/config'
 import registerSearch from './commands/search'
+import registerStaging from './commands/staging'
 
 const cli = cac('orbit')
 
@@ -41,6 +42,7 @@ async function main() {
     registerScreenshot(cli)
     registerConfig(cli)
     registerSearch(cli)
+    registerStaging(cli)
 
     cli.help()
     cli.parse()

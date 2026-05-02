@@ -30,6 +30,27 @@ export interface FileFormatPattern {
 
 export const FILE_FORMAT_REGISTRY: FileFormatPattern[] = [
   {
+    id: 'orbit-native',
+    name: 'Orbit Native',
+    description: 'The standard naming convention used by Orbit for processed files',
+    context: 'general',
+    examples: [
+      '2024-02-11 13-34-23 (OriginalName).png',
+      '2024-02-11 13-34-23_1 (OriginalName).png'
+    ],
+    // Group 1: Date (YYYY-MM-DD), Group 2: Time (HH-mm-ss), Group 3: Optional Index, Group 4: Original Name
+    regex: /^(\d{4}-\d{2}-\d{2})\s+(\d{2}-\d{2}-\d{2})(?:_(\d+))?\s+\((.+)\)$/,
+    map: (m) => {
+      const [year, month, day] = m[1].split('-').map(Number);
+      const [hours, minutes, seconds] = m[2].split('-').map(Number);
+      return {
+        timestamp: new Date(year, month - 1, day, hours, minutes, seconds),
+        index: m[3] ? parseInt(m[3]) : undefined,
+        originalName: m[4]
+      };
+    }
+  },
+  {
     id: 'windows-game-bar-screenshot',
     name: 'Windows Game Bar (Screenshot)',
     description: 'Format used by Windows Game Bar for screenshots (Win+Alt+PrtSc)',

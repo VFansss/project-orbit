@@ -8,6 +8,7 @@ import { emitKeypressEvents } from 'node:readline'
 import { resolvePath, getSuggestedLibraryPath } from '../../paths'
 import { loadConfig } from '../../storage'
 import { OperationBatch, CopyFileCommand, MoveFileCommand } from './operations'
+import { cleanStagingAction } from '../staging'
 
 const SUPPORTED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
 
@@ -99,15 +100,31 @@ async function scanFiles(dir: string, recursive: boolean): Promise<ScannedFile[]
         let extractedData: any = undefined
         const nameWithoutExt = basename(file.name, ext)
         
-        for (const pattern of FILE_FORMAT_REGISTRY) {
-          if (pattern.context === 'screenshot' || pattern.context === 'general') {
-            const match = nameWithoutExt.match(pattern.regex)
-            if (match) {
-              extractedData = pattern.map(match)
-              if (extractedData.gameName) {
-                gameNameHint = extractedData.gameName
+        const tryMatch = (nameToMatch: string) => {
+          for (const pattern of FILE_FORMAT_REGISTRY) {
+            if (pattern.context === 'screenshot' || pattern.context === 'general') {
+              const match = nameToMatch.match(pattern.regex)
+              if (match) {
+                return pattern.map(match)
               }
-              break
+            }
+          }
+          return undefined
+        }
+
+        extractedData = tryMatch(nameWithoutExt)
+
+        if (extractedData) {
+          if (extractedData.gameName) {
+            gameNameHint = extractedData.gameName
+          } else if (extractedData.originalName) {
+            // It might be a wrapper format (like Orbit Native). Try to match the inner original name.
+            const innerData = tryMatch(extractedData.originalName)
+            if (innerData && innerData.gameName) {
+              gameNameHint = innerData.gameName
+            } else {
+              // Fallback to the cleaned original name instead of the full wrapper name
+              gameNameHint = extractedData.originalName.replace(/[-_]/g, ' ').trim()
             }
           }
         }
@@ -550,10 +567,17 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
       sExec.message(`Committing: ${cur}/${tot} files...`)
     })
     sExec.stop('Commit successful!')
+    
+    // Clean staging after a successful commit
+    const handledStagingFiles = batch.getCommands().map(c => c.targetStaging)
+    await cleanStagingAction(handledStagingFiles, true)
   } else {
     sExec.start('Rolling back staging...')
     await batch.rollbackStaging()
     sExec.stop('Staging cleared.')
+    
+    // Also clean up empty directories after rollback
+    await cleanStagingAction([], false)
   }
 }
 
