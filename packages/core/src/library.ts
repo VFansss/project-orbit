@@ -5,9 +5,9 @@ import { performSearch } from './search';
 import { PathService } from './paths';
 import { LocalResolverService } from './local-resolver';
 import type { OrbitConfig } from './models/config';
-import { mkdir, writeFile, readdir } from 'node:fs/promises';
+import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { stringify } from 'smol-toml';
+import { stringify, parse as parseToml } from 'smol-toml';
 import { mapGameToMetadata } from './mappers/metadata';
 import type { Game } from './models/game';
 
@@ -25,6 +25,29 @@ export class LibraryService {
   constructor(private config: OrbitConfig) {
     this.paths = new PathService(config);
     this.localResolver = new LocalResolverService(config);
+  }
+
+  /**
+   * Reads the aliases cache from the library root.
+   */
+  async getAliases(): Promise<Record<string, string>> {
+    try {
+      const aliasPath = join(this.paths.getLibraryPath(), 'orbit.aliases.toml');
+      const content = await readFile(aliasPath, 'utf8');
+      return parseToml(content) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Saves a string alias mapped to an ID.
+   */
+  async saveAlias(aliasName: string, targetId: string): Promise<void> {
+    const aliases = await this.getAliases();
+    aliases[aliasName] = targetId;
+    const aliasPath = join(this.paths.getLibraryPath(), 'orbit.aliases.toml');
+    await writeFile(aliasPath, stringify(aliases));
   }
 
   /**
@@ -89,6 +112,21 @@ export class LibraryService {
   }
 
   async resolve(queryString: string, options: ResolveOptions = {}): Promise<ResolveResult[]> {
+    // Check aliases first (only for plain name searches)
+    if (!queryString.includes(':')) {
+      const aliases = await this.getAliases();
+      if (aliases[queryString]) {
+        Logger.info(`Alias cache hit: "${queryString}" -> "${aliases[queryString]}"`);
+        const targetResults = await this.resolve(aliases[queryString], options);
+        if (targetResults.length > 0) {
+          const res = targetResults[0];
+          res.confidence = 1;
+          res.confidenceDescription = 'Cache Hit';
+          return [res];
+        }
+      }
+    }
+
     const query = this.parseQuery(queryString);
     const scope = options.scope || 'both';
     

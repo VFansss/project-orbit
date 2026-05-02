@@ -129,6 +129,10 @@ async function scanFiles(dir: string, recursive: boolean): Promise<ScannedFile[]
  * Logic for parsing screenshots.
  */
 export async function parseAction(path?: string, isInteractive: boolean, flags: any = {}) {
+  // Suppress Node.js/Bun MaxListenersExceededWarning caused by rapid consecutive Clack prompts
+  if (process.stdin.setMaxListeners) process.stdin.setMaxListeners(0)
+  if (process.stdout.setMaxListeners) process.stdout.setMaxListeners(0)
+
   const config = await loadConfig()
   const library = new LibraryService(config)
   
@@ -346,6 +350,10 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
             selectedGame = localResults[selected as number]
             groupResolved = true
             onlineFallback = false
+            
+            // Save alias for local manual match
+            const targetId = selectedGame.ids.igdb ? `igdb:${selectedGame.ids.igdb}` : (selectedGame.ids.steam ? `steam:${selectedGame.ids.steam}` : `name:${selectedGame.name}:${platform}`)
+            await library.saveAlias(groupName, targetId)
           }
         }
 
@@ -360,14 +368,23 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
             // Loop repeats
           } else {
             const options = searchResults.map((r, i) => {
-              const sourceLabel = r.local?.exists ? 'Local' : (r.source ? r.source.toUpperCase() : 'Remote')
+              const sourceLabel = r.local?.exists || r.local?.hasMetadata ? 'Local' : (r.source ? r.source.toUpperCase() : 'Remote')
               const platformLabel = r.platform ? ` [${r.platform}]` : ''
               const idsLabel = Object.entries(r.ids).map(([k, v]) => `${k}:${v}`).join(', ')
               
+              const locs: string[] = []
+              if (r.local) {
+                if (r.local.exists) locs.push('Games')
+                if (r.local.hasMetadata) locs.push('Metadata')
+                if (r.local.hasSavedata) locs.push('Savedata')
+                if (r.local.hasScreenshots) locs.push('Screenshots')
+              }
+              const locStr = locs.length > 0 ? locs.join(' | ') : 'Remote'
+
               return {
                 value: i,
                 label: `${r.name}${platformLabel} (${sourceLabel})`,
-                hint: `Conf: ${r.confidence} | ${idsLabel} | ${r.local?.relativePath || 'Remote'}`
+                hint: `Conf: ${r.confidence} | ${idsLabel} | ${locStr}`
               }
             })
 
@@ -392,6 +409,10 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
                 await library.saveMetadata(game)
                 s.stop('Metadata saved.')
                 groupResolved = true
+
+                // Save alias for online manual match
+                const targetId = selectedGame.ids.igdb ? `igdb:${selectedGame.ids.igdb}` : `name:${selectedGame.name}:${platform}`
+                await library.saveAlias(groupName, targetId)
               } catch (e: any) {
                 s.stop('Failed to save metadata.')
                 p.log.error(e.message)
