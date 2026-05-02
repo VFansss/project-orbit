@@ -45,6 +45,18 @@ export async function performSearch(options: SearchOptions, config: OrbitConfig)
         });
         
         results.push(...mapped);
+
+        // Sort results: 1. Exact matches first, 2. Shortest name first
+        results.sort((a, b) => {
+          const queryLower = options.query.toLowerCase();
+          const aExact = a.name.toLowerCase() === queryLower;
+          const bExact = b.name.toLowerCase() === queryLower;
+
+          if (aExact && !bExact) return -1;
+          if (!aExact && bExact) return 1;
+
+          return a.name.length - b.name.length;
+        });
       } catch (e) {
         Logger.error(`Remote search failed. Try --offline mode.`);
       }

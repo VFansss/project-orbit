@@ -9,8 +9,18 @@ import { resolvePath, getSuggestedLibraryPath } from '../../paths'
 import { loadConfig } from '../../storage'
 import { OperationBatch, CopyFileCommand, MoveFileCommand } from './operations'
 import { cleanStagingAction } from '../staging'
+import { formatResultForSelect } from '../ui-utils'
 
 const SUPPORTED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
+
+/**
+ * Removes invisible Unicode characters (like Zero-Width Space) that can break terminal prompts.
+ */
+function stripInvisibleChars(str: string): string {
+  // Removes common invisible characters like U+200B (ZWSP), U+200C, U+200D, U+FEFF
+  // and other non-printable control characters.
+  return str.replace(/[\u200B-\u200D\uFEFF\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+}
 
 /**
  * Checks if a file exists.
@@ -132,7 +142,7 @@ async function scanFiles(dir: string, recursive: boolean): Promise<ScannedFile[]
         results.push({
           path: fullPath,
           name: file.name,
-          gameNameHint: gameNameHint || nameWithoutExt.replace(/[-_]/g, ' ').trim(),
+          gameNameHint: stripInvisibleChars(gameNameHint || nameWithoutExt.replace(/[-_]/g, ' ').trim()),
           extracted: extractedData
         })
       }
@@ -356,26 +366,7 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
         s.stop('Local search completed.')
 
         if (localResults.length > 0) {
-          const options = localResults.map((r, i) => {
-            const sourceLabel = r.local?.exists || r.local?.hasMetadata ? 'Local' : (r.source ? r.source.toUpperCase() : 'Remote')
-            const platformLabel = r.platform ? ` [${r.platform}]` : ''
-            const idsLabel = Object.entries(r.ids).map(([k, v]) => `${k}:${v}`).join(', ')
-            
-            const locs: string[] = []
-            if (r.local) {
-              if (r.local.exists) locs.push('Games')
-              if (r.local.hasMetadata) locs.push('Metadata')
-              if (r.local.hasSavedata) locs.push('Savedata')
-              if (r.local.hasScreenshots) locs.push('Screenshots')
-            }
-            const locStr = locs.length > 0 ? locs.join(' | ') : 'Remote'
-
-            return {
-              value: i,
-              label: `${r.name}${platformLabel} (${sourceLabel})`,
-              hint: `Conf: ${r.confidence} | ${idsLabel} | ${locStr}`
-            }
-          })
+          const options = localResults.map((r, i) => formatResultForSelect(r, i))
 
           const selected = await p.select({
             message: 'Select the local game:',
@@ -408,26 +399,7 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
             p.log.warn('No results found online.')
             // Loop repeats
           } else {
-            const options = searchResults.map((r, i) => {
-              const sourceLabel = r.local?.exists || r.local?.hasMetadata ? 'Local' : (r.source ? r.source.toUpperCase() : 'Remote')
-              const platformLabel = r.platform ? ` [${r.platform}]` : ''
-              const idsLabel = Object.entries(r.ids).map(([k, v]) => `${k}:${v}`).join(', ')
-              
-              const locs: string[] = []
-              if (r.local) {
-                if (r.local.exists) locs.push('Games')
-                if (r.local.hasMetadata) locs.push('Metadata')
-                if (r.local.hasSavedata) locs.push('Savedata')
-                if (r.local.hasScreenshots) locs.push('Screenshots')
-              }
-              const locStr = locs.length > 0 ? locs.join(' | ') : 'Remote'
-
-              return {
-                value: i,
-                label: `${r.name}${platformLabel} (${sourceLabel})`,
-                hint: `Conf: ${r.confidence} | ${idsLabel} | ${locStr}`
-              }
-            })
+            const options = searchResults.map((r, i) => formatResultForSelect(r, i))
 
             const selected = await p.select({
               message: 'Select the online game:',

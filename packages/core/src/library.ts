@@ -203,6 +203,7 @@ export class LibraryService {
           confidence,
           confidenceDescription: CONFIDENCE_MAP[2],
           name: r.name,
+          year: r.year,
           ids: r.ids,
           platform: hintedPlatform,
           source: r.source,

@@ -99,6 +99,13 @@ export class LocalResolverService {
       }
 
       if (confidence !== -1) {
+        // Try to extract year from metadata or folder name
+        let year: number | undefined = metadata?.general?.release_year;
+        if (!year) {
+          const yearMatch = folder.match(/\((\d{4})\)/);
+          if (yearMatch) year = parseInt(yearMatch[1]);
+        }
+
         const gamesRoot = this.paths.getLibraryPath('Games');
         const userDataRoot = this.paths.getLibraryPath('UserData');
         
@@ -124,6 +131,7 @@ export class LocalResolverService {
           confidence,
           confidenceDescription: CONFIDENCE_MAP[confidence],
           name: folder,
+          year,
           platform,
           source: 'local',
           ids,
