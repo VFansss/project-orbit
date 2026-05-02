@@ -144,24 +144,33 @@ Each gamefolder COULD have one of these subfolders
 
 Note: this kind of folder can be in multiple locations. To check what has in common for every instance, check more details [here](#game-folders---general-details)
 
-Will contain screenshots made by an user regarding a certain game
+Will contain screenshots made by an user regarding a certain game.
 
+Files follow a sortable, human-readable and extensible format:
+`YYYY-MM-DD HH-mm-ss[_OPTIONAL_INDEX] [- DESCRIPTION] [(TAG 1)] [(TAG 2)] ... [(ORIGINAL_NAME)].extension`
 
-Files follow a sortable and human-readable format:
-YYYY-MM-DD_HH-mm-ss[_INDEX][_DESCRIPTION].**extension**
+- **Timestamp** (YYYY-MM-DD HH-mm-ss): The exact date and time when the screenshot was taken. Mandatory.
+- **Index** ([_OPTIONAL_INDEX]): An optional 1-based numeric suffix (e.g., _1) added only to prevent collisions if multiple screenshots are taken within the same second.
+- **Description** ([- DESCRIPTION]): An optional descriptive tag (e.g., Boss-Fight). If present, it must be preceded by a dash with spaces ` - `.
+- **Tags/Attributes** ([(TAG)]): Any extra information (e.g., Hud Removed, 4K) is wrapped in parentheses. Multiple tags are supported and stacked.
+- **Original Name** ([(ORIGINAL_NAME)]): If the original filename is preserved, it MUST be the **last** set of parentheses before the extension.
+  - The extension is removed from the original name if it's the same as the final file.
 
-- Timestamp (YYYY-MM-DD_HH-mm-ss): The exact date and time when the screenshot was taken.
-- Index ([_INDEX]): An optional numeric suffix (e.g., _1) added only to prevent collisions if multiple screenshots are taken within the same second.
-- Description ([_DESCRIPTION]): An optional descriptive tag provided by the user or the system to identify the content (e.g., Boss-Fight). Can contain spaces
+**Content:**
+
+- `media files`: The processed or main screenshots.
+- `Original/`: An optional subfolder containing the untouched source files if any retouching or processing (e.g., HUD removal) was performed.
 
 Examples:
-  - 2026-04-24_19-30-15.png
-  - 2026-04-24_19-30-15_1.png (Collision handling)
-  - 2026-04-24_19-30-15_Final Boss.png (With description)
-  - 2026-04-24_19-30-15_1_Final Boss.png (Collision with description)
 
-No metadata files are planned for screenshots
+- **Base Minimum:** `2026-04-24 19-30-15.png`
+- **Collision Handling:** `2026-04-24 19-30-15_1.png`
+- **With Description:** `2026-04-24 19-30-15 - Final Boss.png`
+- **With Description & Tags:** `2026-04-24 19-30-15 - Final Boss (Hud Removed).png`
+- **With Original Name (No Description):** `2026-04-24 19-30-15 (Alpha Protocol 11_02_2024 13_34_23).png`
+- **Complete Stack (Desc + Tag + Original):** `2026-04-24 19-30-15 - Final Boss (Hud Removed) (Alpha Protocol 11_02_2024 13_34_23).png`
 
+No separate metadata files are planned for screenshots; the filename is the database.
 #### Savedata
 
 TODO:
