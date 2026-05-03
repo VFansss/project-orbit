@@ -30,7 +30,7 @@ export interface ResolveResult {
   confidence: ConfidenceLevel;
   confidenceDescription: string;
   name: string;
-  year?: number;
+  year?: string | number;
   platform?: string;
   source?: string; // e.g. 'local', 'igdb', 'steam'
   ids: Record<string, string>;

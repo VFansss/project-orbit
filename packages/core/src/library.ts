@@ -5,11 +5,14 @@ import { performSearch } from './search';
 import { PathService } from './paths';
 import { LocalResolverService } from './local-resolver';
 import type { OrbitConfig } from './models/config';
-import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify, parse as parseToml } from 'smol-toml';
 import { mapGameToMetadata } from './mappers/metadata';
+import { mapIGDBToGame } from './mappers/igdb';
 import type { Game } from './models/game';
+
+import { searchGames } from './integrations/igdb';
 
 export interface OrbitQuery {
   type: SearchType;
@@ -96,6 +99,23 @@ export class LibraryService {
   }
 
 
+  /**
+   * Fetches full metadata directly from the source API (e.g. IGDB) and returns a complete Game object.
+   */
+  async fetchFullGameData(source: string, id: string): Promise<Game | null> {
+    if (source === 'igdb' || source === 'steam') {
+      const { igdbClientId, igdbClientSecret } = this.config.secrets;
+      if (!igdbClientId || !igdbClientSecret) throw new Error("Missing IGDB credentials.");
+      
+      const searchType = source === 'igdb' ? 'igdb' : 'steam';
+      const results = await searchGames(id, igdbClientId, igdbClientSecret, searchType, 'full');
+      
+      if (!results || results.length === 0) return null;
+      return mapIGDBToGame(results[0]);
+    }
+    return null;
+  }
+
   parseQuery(query: string): OrbitQuery {
     if (query.startsWith('urn:orbit:')) {
       const parts = query.split(':');
@@ -179,7 +199,11 @@ export class LibraryService {
         offline: false
       }, this.config);
 
-      onlineResults = searchRes.map(r => {
+      const checkPath = async (p: string) => {
+        try { await stat(p); return true; } catch { return false; }
+      }
+
+      onlineResults = await Promise.all(searchRes.map(async r => {
         const confidence: ConfidenceLevel = 2;
 
         // Use r.platform if present, otherwise use the first platform from options as a hint
@@ -189,13 +213,15 @@ export class LibraryService {
         let potentialLocal = undefined;
         if (hintedPlatform) {
           const gamePaths = this.paths.getGamePaths(hintedPlatform, r.name, r.year);
+          const metaPaths = this.paths.getMetadataPath(hintedPlatform, r.name, r.year);
+          
           potentialLocal = {
             path: gamePaths.absolute,
             relativePath: gamePaths.relative,
-            exists: false,
-            hasMetadata: false,
-            hasScreenshots: false,
-            hasSavedata: false,
+            exists: await checkPath(gamePaths.absolute),
+            hasMetadata: await checkPath(metaPaths.file),
+            hasScreenshots: false, // Defaulting for online
+            hasSavedata: false,    // Defaulting for online
           };
         }
 
@@ -210,7 +236,7 @@ export class LibraryService {
           local: potentialLocal,
           metadata: r.metadata || r // Preserve full raw metadata
         };
-      });
+      }));
     }
 
     // Combine and return

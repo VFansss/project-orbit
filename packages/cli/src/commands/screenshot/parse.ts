@@ -417,9 +417,17 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
               // Automatically save metadata for online results
               s.start('Saving metadata...')
               try {
-                const game = mapIGDBToGame(selectedGame.metadata)
-                game.platform = platform as any
-                await library.saveMetadata(game)
+                let gameToSave;
+                if (selectedGame.source === 'igdb' && selectedGame.ids.igdb) {
+                  gameToSave = await library.fetchFullGameData('igdb', selectedGame.ids.igdb);
+                }
+                
+                if (!gameToSave) {
+                  gameToSave = mapIGDBToGame(selectedGame.metadata)
+                }
+
+                gameToSave.platform = platform as any
+                await library.saveMetadata(gameToSave)
                 s.stop('Metadata saved.')
                 groupResolved = true
 

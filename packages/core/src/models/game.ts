@@ -25,10 +25,11 @@ export const GameMetadataSchema = z.object({
     developers: z.array(z.string()).default([]),
     publishers: z.array(z.string()).default([]),
   }).default({ name: 'Unknown' }),
-  source: z.object({
-    source: z.array(z.string()).default([]),
+  ids: z.record(z.string()).default({}),
+  sources: z.array(z.object({
+    name: z.string(),
     url: z.string().optional(),
-  }).default({ source: [] }),
+  })).default([]),
 }).catchall(z.any());
 
 export type GameMetadata = z.infer<typeof GameMetadataSchema>;

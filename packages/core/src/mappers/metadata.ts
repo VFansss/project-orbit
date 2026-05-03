@@ -1,13 +1,13 @@
 import type { Game, GameMetadata } from '../models/game';
 
 /**
- * Ensures a value is an array of strings. 
+ * Ensures a value is an array. 
  * Useful for TOML where a user might write a single string instead of ["string"].
  */
-function toArray(val: any): string[] {
+function toArray(val: any): any[] {
   if (!val) return [];
-  if (Array.isArray(val)) return val.map(String);
-  return [String(val)];
+  if (Array.isArray(val)) return val;
+  return [val];
 }
 
 /**
@@ -19,7 +19,7 @@ export function mapGameToMetadata(game: Game): any {
 
   // Ensure sections exist
   if (!tomlData.ids) tomlData.ids = {};
-  if (!tomlData.links) tomlData.links = {};
+  if (!tomlData.sources) tomlData.sources = [];
 
   // Add standard identifiers to the ids section if they exist
   if (game.ids.igdb) tomlData.ids.igdb = game.ids.igdb;
@@ -36,7 +36,7 @@ export function mapGameToMetadata(game: Game): any {
 export function mapMetadataToGame(metadata: any, platform: string, folderName: string): Game {
   const ids: Record<string, string> = {};
   
-  // Helper to find ID in common places (root, ids, general, or links)
+  // Helper to find ID in common places (root, ids, general)
   const findId = (key: string) => metadata.ids?.[key] || metadata.general?.[key] || metadata[key];
 
   const igdb = findId('igdb');
@@ -53,15 +53,15 @@ export function mapMetadataToGame(metadata: any, platform: string, folderName: s
   const cleanMetadata: GameMetadata = {
     general: {
       name: metadata.general?.name || folderName,
-      aliases: toArray(metadata.general?.aliases),
+      aliases: toArray(metadata.general?.aliases).map(String),
       summary: metadata.general?.summary,
       release_year: metadata.general?.release_year ? String(metadata.general.release_year) : undefined,
-      genres: toArray(metadata.general?.genres),
-      developers: toArray(metadata.general?.developers),
-      publishers: toArray(metadata.general?.publishers),
+      genres: toArray(metadata.general?.genres).map(String),
+      developers: toArray(metadata.general?.developers).map(String),
+      publishers: toArray(metadata.general?.publishers).map(String),
     },
     ids: metadata.ids || {},
-    links: metadata.links || {}
+    sources: toArray(metadata.sources || metadata.source)
   };
 
   return {

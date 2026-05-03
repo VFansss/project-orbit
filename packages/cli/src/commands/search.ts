@@ -71,8 +71,7 @@ export default (cli: CAC) => {
     .command('search [val1] [val2]', 'Search for games in library or online')
     .option('--platform <platform>', 'Filter by platform (comma separated)')
     .option('--content <type>', 'Filter local content (games, userdata)')
-    .option('--metadata', 'Show full metadata details')
-    .option('--no-metadata', 'Explicitly hide metadata and skip prompt')
+    .option('-l, --level <type>', 'Detail level: none, basic, full (default: basic)')
     .option('--save', 'Save metadata of the online result to the local library')
     .option('--json', 'Output results in JSON format')
     .action(async (val1: string | undefined, val2: string | undefined, flags: any) => {
@@ -125,17 +124,22 @@ export default (cli: CAC) => {
         process.exit(1)
       }
 
-      // Ask for metadata if online and not specified (and not explicitly disabled)
-      let showMetadata = flags.metadata
-      if (flags.metadata === false) showMetadata = false; // --no-metadata sets metadata: false
+      // Metadata level logic
+      let level = flags.level
       
-      if (showMetadata === undefined && scope !== 'local' && !flags.json) {
+      // If level is not specified and we are in an interactive online search, ask the user
+      if (level === undefined && scope !== 'local' && !flags.json) {
         const wantMetadata = await p.confirm({
-          message: 'Do you want to see the full metadata for the results?',
-          initialValue: false
+          message: 'Do you want to see metadata details for the results?',
+          initialValue: true
         })
-        if (!p.isCancel(wantMetadata)) showMetadata = wantMetadata
+        if (p.isCancel(wantMetadata)) process.exit(0)
+        level = wantMetadata ? 'basic' : 'none'
+      } else if (level === undefined) {
+        level = 'basic'
       }
+
+      const showMetadata = level !== 'none'
 
       const s = flags.json ? null : p.spinner()
       if (s) s.start(`Searching (${scope}) for "${targetQuery}"...`)
@@ -167,7 +171,6 @@ export default (cli: CAC) => {
 
         if (results.length === 1) {
           selectedResult = results[0]
-          printResult(selectedResult, showMetadata)
         } else {
           console.log('\n\x1b[34m--- Multiple Matches Found ---\x1b[0m')
           const options = results.map((r, i) => formatResultForSelect(r, i))
@@ -178,16 +181,41 @@ export default (cli: CAC) => {
 
           if (p.isCancel(selected)) process.exit(0)
           selectedResult = results[selected as number]
-          printResult(selectedResult, showMetadata)
         }
 
+        // Fetch full metadata if requested and it's an online source
+        if (level === 'full' && (selectedResult.source === 'igdb' || selectedResult.source === 'steam')) {
+          const sFetch = p.spinner()
+          sFetch.start('Fetching expanded metadata...')
+          const idToFetch = selectedResult.ids.igdb || selectedResult.ids.steam;
+          if (idToFetch) {
+             const fullGame = await library.fetchFullGameData(selectedResult.source, idToFetch);
+             if (fullGame) {
+               selectedResult.metadata = fullGame.metadata; // Replace metadata
+             }
+          }
+          sFetch.stop('Expanded metadata retrieved.')
+        }
+
+        printResult(selectedResult, showMetadata)
+
         if (flags.save) {
-          if (selectedResult.source === 'igdb') {
+          if (selectedResult.source === 'igdb' || selectedResult.source === 'steam') {
             const sSave = p.spinner()
             sSave.start('Saving metadata to library...')
             try {
-              const game = mapIGDBToGame(selectedResult.metadata)
-              const path = await library.saveMetadata(game)
+              let gameToSave;
+              if (selectedResult.ids.igdb || selectedResult.ids.steam) {
+                const idToFetch = selectedResult.ids.igdb || selectedResult.ids.steam;
+                const fullGame = await library.fetchFullGameData(selectedResult.source, idToFetch);
+                if (fullGame) gameToSave = fullGame;
+              }
+              
+              if (!gameToSave) {
+                gameToSave = mapIGDBToGame(selectedResult.metadata)
+              }
+              
+              const path = await library.saveMetadata(gameToSave)
               sSave.stop(`Metadata saved at: ${path}`)
             } catch (err: any) {
               sSave.stop('Failed to save metadata.', 1)

@@ -41,6 +41,20 @@ export function mapIGDBToGame(igdbGame: IGDBGame): Game {
   // Extract aliases from alternative names
   const aliases = igdbGame.alternative_names?.map(an => an.name) || [];
 
+  // Extract genres
+  const genres = igdbGame.genres?.map(g => g.name) || [];
+
+  // Extract companies
+  const developers: string[] = [];
+  const publishers: string[] = [];
+  
+  if (igdbGame.involved_companies) {
+    for (const company of igdbGame.involved_companies) {
+      if (company.developer && company.company?.name) developers.push(company.company.name);
+      if (company.publisher && company.company?.name) publishers.push(company.company.name);
+    }
+  }
+
   const metadata: GameMetadata = {
     general: {
       name: igdbGame.name,
@@ -49,14 +63,14 @@ export function mapIGDBToGame(igdbGame: IGDBGame): Game {
       release_year: igdbGame.first_release_date 
         ? String(new Date(igdbGame.first_release_date * 1000).getFullYear()) 
         : undefined,
-      genres: [], // Mapping genres would require additional API calls or data
-      developers: [],
-      publishers: [],
+      genres,
+      developers,
+      publishers,
     },
-    source: {
-      source: ['IGDB'],
-      url: `https://www.igdb.com/games/${igdbGame.id}`
-    }
+    ids,
+    sources: [
+      { name: 'IGDB', url: igdbGame.url }
+    ]
   };
 
   return {

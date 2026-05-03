@@ -1,9 +1,12 @@
 import type { SearchType } from '../models/search';
 import { Logger } from '../logger';
 
+export type IGDBDetailLevel = 'basic' | 'full';
+
 export interface IGDBGame {
   id: number;
   name: string;
+  url?: string;
   first_release_date?: number;
   summary?: string;
   platforms?: number[];
@@ -11,6 +14,13 @@ export interface IGDBGame {
   external_games?: Array<{
     uid: string;
     external_game_source: number;
+  }>;
+  genres?: Array<{ id: number; name: string }>;
+  involved_companies?: Array<{
+    id: number;
+    developer: boolean;
+    publisher: boolean;
+    company: { id: number; name: string };
   }>;
 }
 
@@ -26,21 +36,27 @@ export async function searchGames(
   query: string, 
   clientId: string, 
   clientSecret: string, 
-  type: SearchType = 'name'
+  type: SearchType = 'name',
+  detailLevel: IGDBDetailLevel = 'basic'
 ): Promise<IGDBGame[]> {
   const token = await getAccessToken(clientId, clientSecret);
   
   let endpoint = 'games';
   let apicalypseBody = '';
 
+  let fields = 'name, url, first_release_date, summary, platforms, alternative_names.name, external_games.*';
+  if (detailLevel === 'full') {
+    fields += ', genres.name, involved_companies.developer, involved_companies.publisher, involved_companies.company.name';
+  }
+
   if (type === 'steam') {
     endpoint = 'external_games';
-    apicalypseBody = `fields game.name, game.first_release_date, game.summary, game.platforms, game.alternative_names.name, game.external_games.*; where uid = "${query}" & external_game_source = 1;`;
+    apicalypseBody = `fields game.${fields.replace(/, /g, ', game.')}; where uid = "${query}" & external_game_source = 1;`;
   } else if (type === 'igdb') {
-    apicalypseBody = `fields name, first_release_date, summary, platforms, alternative_names.name, external_games.*; where id = ${query};`;
+    apicalypseBody = `fields ${fields}; where id = ${query};`;
   } else {
     // Requesting external_games to get Steam IDs (source 1)
-    apicalypseBody = `search "${query}"; fields name, first_release_date, summary, platforms, alternative_names.name, external_games.*; limit 10;`;
+    apicalypseBody = `search "${query}"; fields ${fields}; limit 10;`;
   }
 
   Logger.debug(`[IGDB] Requesting endpoint: ${endpoint}`);
@@ -72,36 +88,4 @@ export async function searchGames(
   }
 
   return rawData as IGDBGame[];
-}
-
-export async function getIGDBGame(id: string, clientId: string, clientSecret: string): Promise<any> {
-  const token = await getAccessToken(clientId, clientSecret);
-  const apicalypseBody = `fields *, external_games.*; where id = ${id};`;
-  const response = await fetch(`https://api.igdb.com/v4/games`, {
-    method: 'POST',
-    headers: {
-      'Client-ID': clientId,
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json',
-    },
-    body: apicalypseBody,
-  });
-  if (!response.ok) throw new Error(`IGDB API details request failed.`);
-  return await response.json();
-}
-
-export async function getGameByExternalId(externalId: string, sourceId: number, clientId: string, clientSecret: string): Promise<any> {
-  const token = await getAccessToken(clientId, clientSecret);
-  const query = `fields game; where uid = "${externalId}" & external_game_source = ${sourceId};`;
-  const response = await fetch(`https://api.igdb.com/v4/external_games`, {
-    method: 'POST',
-    headers: {
-      'Client-ID': clientId,
-      'Authorization': `Bearer ${token}`,
-    },
-    body: query
-  });
-  const data = await response.json() as any[];
-  if (!data || data.length === 0 || !data[0].game) return null;
-  return await getIGDBGame(data[0].game, clientId, clientSecret);
 }

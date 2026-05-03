@@ -15,7 +15,7 @@ export class PathService {
   /**
    * Sanitizes a string and formats it as a valid folder name: "Name (Year)".
    */
-  static getSafeFolderName(name: string, year?: number): string {
+  static getSafeFolderName(name: string, year?: string | number): string {
     // Windows illegal: \ / : * ? " < > |
     const cleanName = name
       .replace(/[\\/:*?"<>|]/g, '')
@@ -28,7 +28,7 @@ export class PathService {
   /**
    * Calculates paths for a game result.
    */
-  getGamePaths(platform: string, folderName: string, year?: number) {
+  getGamePaths(platform: string, folderName: string, year?: string | number) {
     const safeName = PathService.getSafeFolderName(folderName, year);
     const relativePath = join('Games', platform, safeName);
     const absolutePath = join(this.getLibraryPath(), relativePath);
@@ -42,7 +42,7 @@ export class PathService {
   /**
    * Returns the central metadata path for a game.
    */
-  getMetadataPath(platform: string, folderName: string, year?: number) {
+  getMetadataPath(platform: string, folderName: string, year?: string | number) {
     const safeName = PathService.getSafeFolderName(folderName, year);
     const relativePath = join('Metadata', platform, safeName);
     const absolutePath = join(this.getLibraryPath(), relativePath);
