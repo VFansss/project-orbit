@@ -2,16 +2,15 @@ import type { CAC } from 'cac'
 import * as p from '@clack/prompts'
 import { Orbit } from '@orbit/core'
 import { parseMediaAction } from '../shared/media-parser'
-import { syncAction } from './sync'
 
 /**
- * TODO: Screenshot command router.
- * Dispatches to parse or sync actions based on arguments or user selection.
+ * Clip command router.
+ * Dispatches to parse clips.
  */
 export default (cli: CAC) => {
   cli
-    .command('screenshot [action] [path]', 'Manage screenshots (parse, sync)')
-    .option('--platform <platform>', 'Default platform for screenshots')
+    .command('clip [action] [path]', 'Manage video clips (parse)')
+    .option('--platform <platform>', 'Default platform for clips')
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('--dry-run', 'Show what would be done without making changes', { default: false })
     .option('--copy', 'Copy files instead of moving them', { default: false })
@@ -31,12 +30,11 @@ export default (cli: CAC) => {
 
       // 2. Interactive Selection if action is missing
       if (!targetAction) {
-        p.intro('\x1b[34mScreenshot Management\x1b[0m')
+        p.intro('\x1b[34mClip Management\x1b[0m')
         const response = await p.select({
           message: 'Select an action:',
           options: [
-            { value: 'parse', label: 'Parse', hint: 'Scan a folder for new screenshots' },
-            { value: 'sync', label: 'Sync', hint: 'Update metadata' },
+            { value: 'parse', label: 'Parse', hint: 'Scan a folder for new video clips' },
           ],
         })
         if (p.isCancel(response)) process.exit(0)
@@ -48,9 +46,7 @@ export default (cli: CAC) => {
       // 3. Dispatch to specific action logic
       try {
         if (targetAction === 'parse') {
-          await parseMediaAction('screenshot', path, isInteractive, flags)
-        } else if (targetAction === 'sync') {
-          await syncAction(isInteractive)
+          await parseMediaAction('clip', path, isInteractive, flags)
         } else {
           console.error(`\x1b[31mError:\x1b[0m Unknown action "${targetAction}"`)
           process.exit(1)

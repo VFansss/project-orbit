@@ -1,5 +1,5 @@
 import * as p from '@clack/prompts'
-import { Orbit, FILE_FORMAT_REGISTRY, LibraryService, mapIGDBToGame, PathService } from '@orbit/core'
+import { Orbit, FILE_FORMAT_REGISTRY, LibraryService, mapIGDBToGame, PathService, type FormatContext } from '@orbit/core'
 import { join, extname, basename } from 'node:path'
 import { readdir, stat, access } from 'node:fs/promises'
 import { exec } from 'node:child_process'
@@ -11,14 +11,34 @@ import { OperationBatch, CopyFileCommand, MoveFileCommand } from './operations'
 import { cleanStagingAction } from '../staging'
 import { formatResultForSelect } from '../ui-utils'
 
-const SUPPORTED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
+export type MediaType = 'screenshot' | 'clip'
+
+interface MediaConfig {
+  extensions: Set<string>
+  folderName: string
+  registryContext: FormatContext
+  displayName: string
+}
+
+const MEDIA_CONFIGS: Record<MediaType, MediaConfig> = {
+  screenshot: {
+    extensions: new Set(['.jpg', '.jpeg', '.png', '.webp']),
+    folderName: 'screenshots',
+    registryContext: 'screenshot',
+    displayName: 'Screenshots'
+  },
+  clip: {
+    extensions: new Set(['.mp4', '.mkv', '.mov', '.webm', '.avi']),
+    folderName: 'clips', // Following Orbit standard paths convention
+    registryContext: 'video',
+    displayName: 'Clips'
+  }
+}
 
 /**
  * Removes invisible Unicode characters (like Zero-Width Space) that can break terminal prompts.
  */
 function stripInvisibleChars(str: string): string {
-  // Removes common invisible characters like U+200B (ZWSP), U+200C, U+200D, U+FEFF
-  // and other non-printable control characters.
   return str.replace(/[\u200B-\u200D\uFEFF\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
 }
 
@@ -101,17 +121,17 @@ interface ScannedFile {
 /**
  * Recursively scans a directory for supported files.
  */
-async function scanFiles(dir: string, recursive: boolean): Promise<ScannedFile[]> {
+async function scanFiles(dir: string, recursive: boolean, config: MediaConfig): Promise<ScannedFile[]> {
   const results: ScannedFile[] = []
   const files = await readdir(dir, { withFileTypes: true })
 
   for (const file of files) {
     const fullPath = join(dir, file.name)
     if (file.isDirectory() && recursive) {
-      results.push(...(await scanFiles(fullPath, recursive)))
+      results.push(...(await scanFiles(fullPath, recursive, config)))
     } else if (file.isFile()) {
       const ext = extname(file.name).toLowerCase()
-      if (SUPPORTED_EXTENSIONS.has(ext)) {
+      if (config.extensions.has(ext)) {
         // Try to match with registry
         let gameNameHint: string | undefined
         let extractedData: any = undefined
@@ -119,7 +139,7 @@ async function scanFiles(dir: string, recursive: boolean): Promise<ScannedFile[]
         
         const tryMatch = (nameToMatch: string) => {
           for (const pattern of FILE_FORMAT_REGISTRY) {
-            if (pattern.context === 'screenshot' || pattern.context === 'general') {
+            if (pattern.context === 'general' || pattern.context === config.registryContext) {
               const match = nameToMatch.match(pattern.regex)
               if (match) {
                 return pattern.map(match)
@@ -160,15 +180,16 @@ async function scanFiles(dir: string, recursive: boolean): Promise<ScannedFile[]
 }
 
 /**
- * Logic for parsing screenshots.
+ * Generic logic for parsing media files (screenshots or clips).
  */
-export async function parseAction(path?: string, isInteractive: boolean, flags: any = {}) {
+export async function parseMediaAction(mediaType: MediaType, path?: string, isInteractive: boolean = true, flags: any = {}) {
   // Suppress Node.js/Bun MaxListenersExceededWarning caused by rapid consecutive Clack prompts
   if (process.stdin.setMaxListeners) process.stdin.setMaxListeners(0)
   if (process.stdout.setMaxListeners) process.stdout.setMaxListeners(0)
 
-  const config = await loadConfig()
-  const library = new LibraryService(config)
+  const mConfig = MEDIA_CONFIGS[mediaType]
+  const orbitConfig = await loadConfig()
+  const library = new LibraryService(orbitConfig)
   
   let targetPath = path
   let platform = flags.platform
@@ -179,7 +200,7 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
   // 1. Path Selection
   if (!targetPath && isInteractive) {
     const response = await p.text({
-      message: 'Enter the source directory path:',
+      message: `Enter the source directory path for ${mConfig.displayName}:`,
       initialValue: getSuggestedLibraryPath(),
       validate: (v) => v.length === 0 ? 'Path is required' : undefined
     })
@@ -219,11 +240,11 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
   // 3. Scanning
   const s = p.spinner()
   s.start(`Scanning ${absoluteSourcePath}...`)
-  let allFiles = await scanFiles(absoluteSourcePath, isRecursive)
+  let allFiles = await scanFiles(absoluteSourcePath, isRecursive, mConfig)
   s.stop(`Scan completed. Found ${allFiles.length} files.`)
 
   if (allFiles.length === 0) {
-    p.log.warn('No supported files found in the source directory.')
+    p.log.warn(`No supported ${mConfig.displayName} files found in the source directory.`)
     return
   }
 
@@ -307,8 +328,8 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
     while (!groupResolved && isInteractive) {
       const menuOptions: any[] = []
       
-      const previewHint = files.length === 1 ? 'Open the screenshot' : `Select from ${files.length} screenshots to preview`
-      menuOptions.push({ value: 'preview', label: 'Preview Image', hint: previewHint })
+      const previewHint = files.length === 1 ? `Open the ${mediaType}` : `Select from ${files.length} files to preview`
+      menuOptions.push({ value: 'preview', label: 'Preview File', hint: previewHint })
 
       if (lastSelectedGame && files.length === 1) {
         menuOptions.push({ value: 'previous', label: `It's ${lastSelectedGame.name}, use that`, hint: 'Use the game selected for the previous file' })
@@ -475,8 +496,8 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
         }
       }
 
-      const stagingBase = join(Orbit.state.library.path, '_Staging', 'UserData', Orbit.state.user.id!, 'screenshots', platform, safeGameName)
-      const finalBase = join(Orbit.state.library.path, 'UserData', Orbit.state.user.id!, 'screenshots', platform, safeGameName)
+      const stagingBase = join(Orbit.state.library.path, '_Staging', 'UserData', Orbit.state.user.id!, mConfig.folderName, platform, safeGameName)
+      const finalBase = join(Orbit.state.library.path, 'UserData', Orbit.state.user.id!, mConfig.folderName, platform, safeGameName)
 
       const usedNames = new Set<string>()
 

@@ -7,6 +7,7 @@ import registerLogin from './commands/login'
 import registerStatus from './commands/status'
 import registerLibrary from './commands/library'
 import registerScreenshot from './commands/screenshot'
+import registerClip from './commands/clip'
 import registerConfig from './commands/config'
 import registerSearch from './commands/search'
 import registerStaging from './commands/staging'
@@ -40,6 +41,7 @@ async function main() {
     registerStatus(cli)
     registerLibrary(cli)
     registerScreenshot(cli)
+    registerClip(cli)
     registerConfig(cli)
     registerSearch(cli)
     registerStaging(cli)
