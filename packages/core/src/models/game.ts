@@ -20,7 +20,7 @@ export const GameMetadataSchema = z.object({
     name: z.string(),
     aliases: z.array(z.string()).default([]),
     summary: z.string().optional(),
-    release_year: z.number().optional(),
+    release_year: z.string().optional(),
     genres: z.array(z.string()).default([]),
     developers: z.array(z.string()).default([]),
     publishers: z.array(z.string()).default([]),

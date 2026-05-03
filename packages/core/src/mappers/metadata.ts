@@ -1,17 +1,31 @@
 import type { Game, GameMetadata } from '../models/game';
 
 /**
+ * Ensures a value is an array of strings. 
+ * Useful for TOML where a user might write a single string instead of ["string"].
+ */
+function toArray(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(String);
+  return [String(val)];
+}
+
+/**
  * Maps our internal Pivot Model to the structure expected by orbit.metadata.toml
  */
 export function mapGameToMetadata(game: Game): any {
   // We merge basic info and IDs into the metadata structure for the TOML file
   const tomlData = JSON.parse(JSON.stringify(game.metadata));
 
-  // Add standard identifiers to the general section if they exist
-  if (game.ids.igdb) tomlData.general.igdb = game.ids.igdb;
-  if (game.ids.steam) tomlData.general.steam = game.ids.steam;
-  if (game.ids.serial) tomlData.general.serial = game.ids.serial;
-  if (game.ids.hash) tomlData.general.hash = game.ids.hash;
+  // Ensure sections exist
+  if (!tomlData.ids) tomlData.ids = {};
+  if (!tomlData.links) tomlData.links = {};
+
+  // Add standard identifiers to the ids section if they exist
+  if (game.ids.igdb) tomlData.ids.igdb = game.ids.igdb;
+  if (game.ids.steam) tomlData.ids.steam = game.ids.steam;
+  if (game.ids.serial) tomlData.ids.serial = game.ids.serial;
+  if (game.ids.hash) tomlData.ids.hash = game.ids.hash;
 
   return tomlData;
 }
@@ -22,8 +36,8 @@ export function mapGameToMetadata(game: Game): any {
 export function mapMetadataToGame(metadata: any, platform: string, folderName: string): Game {
   const ids: Record<string, string> = {};
   
-  // Helper to find ID in common places (root, general, or source)
-  const findId = (key: string) => metadata[key] || metadata.general?.[key] || metadata.source?.[key];
+  // Helper to find ID in common places (root, ids, general, or links)
+  const findId = (key: string) => metadata.ids?.[key] || metadata.general?.[key] || metadata[key];
 
   const igdb = findId('igdb');
   const steam = findId('steam');
@@ -35,21 +49,19 @@ export function mapMetadataToGame(metadata: any, platform: string, folderName: s
   if (serial) ids.serial = String(serial);
   if (hash) ids.hash = String(hash);
 
-  // Reconstruct the standardized metadata object
+  // Reconstruct the standardized metadata object with "array-fication"
   const cleanMetadata: GameMetadata = {
     general: {
       name: metadata.general?.name || folderName,
-      aliases: metadata.general?.aliases || [],
+      aliases: toArray(metadata.general?.aliases),
       summary: metadata.general?.summary,
-      release_year: metadata.general?.release_year,
-      genres: metadata.general?.genres || [],
-      developers: metadata.general?.developers || [],
-      publishers: metadata.general?.publishers || [],
+      release_year: metadata.general?.release_year ? String(metadata.general.release_year) : undefined,
+      genres: toArray(metadata.general?.genres),
+      developers: toArray(metadata.general?.developers),
+      publishers: toArray(metadata.general?.publishers),
     },
-    source: {
-      source: metadata.source?.source || [],
-      url: metadata.source?.url
-    }
+    ids: metadata.ids || {},
+    links: metadata.links || {}
   };
 
   return {

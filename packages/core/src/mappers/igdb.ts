@@ -47,7 +47,7 @@ export function mapIGDBToGame(igdbGame: IGDBGame): Game {
       aliases: aliases,
       summary: igdbGame.summary,
       release_year: igdbGame.first_release_date 
-        ? new Date(igdbGame.first_release_date * 1000).getFullYear() 
+        ? String(new Date(igdbGame.first_release_date * 1000).getFullYear()) 
         : undefined,
       genres: [], // Mapping genres would require additional API calls or data
       developers: [],
