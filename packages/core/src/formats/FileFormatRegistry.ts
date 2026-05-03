@@ -35,11 +35,11 @@ export const FILE_FORMAT_REGISTRY: FileFormatPattern[] = [
     description: 'The standard naming convention used by Orbit for processed files',
     context: 'general',
     examples: [
-      '2024-02-11 13-34-23 (OriginalName).png',
-      '2024-02-11 13-34-23_1 (OriginalName).png'
+      '2024-02-11 13-34-23 -- OriginalName.png',
+      '2024-02-11 13-34-23_1 -- OriginalName.jpg'
     ],
-    // Group 1: Date (YYYY-MM-DD), Group 2: Time (HH-mm-ss), Group 3: Optional Index, Group 4: Original Name
-    regex: /^(\d{4}-\d{2}-\d{2})\s+(\d{2}-\d{2}-\d{2})(?:_(\d+))?\s+\((.+)\)$/,
+    // Group 1: Date (YYYY-MM-DD), Group 2: Time (HH-mm-ss), Group 3: Optional Index, Group 4: Original Name (including extension)
+    regex: /^(\d{4}-\d{2}-\d{2})\s+(\d{2}-\d{2}-\d{2})(?:_(\d+))?\s+--\s+(.+)$/,
     map: (m) => {
       const [year, month, day] = m[1].split('-').map(Number);
       const [hours, minutes, seconds] = m[2].split('-').map(Number);

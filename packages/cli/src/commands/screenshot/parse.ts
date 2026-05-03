@@ -500,16 +500,12 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
           baseTimestamp += `_${file.extracted.index}`
         }
 
-        const ext = extname(file.name)
-        let originalName = basename(file.name, ext)
-        if (file.extracted?.originalName) {
-          originalName = file.extracted.originalName
-        }
+        const originalFileFullName = file.extracted?.originalName ? file.extracted.originalName : file.name
 
-        let newFileName = `${baseTimestamp} (${originalName})${ext}`
+        let newFileName = `${baseTimestamp} -- ${originalFileFullName}`
         let counter = 1
         while (usedNames.has(newFileName)) {
-          newFileName = `${baseTimestamp}_${counter} (${originalName})${ext}`
+          newFileName = `${baseTimestamp}_${counter} -- ${originalFileFullName}`
           counter++
         }
         usedNames.add(newFileName)
