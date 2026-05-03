@@ -50,35 +50,42 @@ function openFilePreview(filePath: string) {
 
 /**
  * Shows a countdown prompt. If the user doesn't answer in time, it auto-accepts.
+ * If the user interacts (presses any key like arrows), the timer stops.
  */
 async function autoConfirmCountdown(message: string, seconds: number = 4): Promise<boolean> {
   let timeoutId: NodeJS.Timeout
+  let interrupted = false
 
-  // The actual confirm prompt from Clack
-  const confirmPromise = p.confirm({
-    message: `${message} (Auto-accepting in ${seconds}s)`,
-    initialValue: true
-  })
-
-  // The timer that automatically resolves to true
   const timeoutPromise = new Promise<boolean>((resolve) => {
     timeoutId = setTimeout(() => {
-      resolve(true)
+      if (!interrupted) {
+        // Simulate an Enter keypress to resolve the Clack prompt automatically
+        process.stdin.emit('keypress', '\r', { name: 'return' })
+        resolve(true)
+      }
     }, seconds * 1000)
   })
 
-  // Race them: whichever finishes first wins
-  const result = await Promise.race([confirmPromise, timeoutPromise])
+  const onKeypress = (char: string, key: any) => {
+    if (key && key.name !== 'return') {
+      interrupted = true
+      clearTimeout(timeoutId)
+    }
+  }
 
-  // Cleanup the timer so it doesn't hang the process
+  process.stdin.on('keypress', onKeypress)
+
+  const result = await Promise.race([
+    p.confirm({
+      message: `${message} (Auto-accepting in ${seconds}s)`,
+      initialValue: true
+    }),
+    timeoutPromise
+  ])
+
+  process.stdin.removeListener('keypress', onKeypress)
   clearTimeout(timeoutId!)
 
-  // If the timer won, the Clack prompt is still technically active in the terminal.
-  // This is a known limitation of mixing Clack with raw timeouts, but it's safe.
-  if (result === true && !p.isCancel(result)) {
-    return true
-  }
-  
   if (p.isCancel(result)) process.exit(0)
   
   return result as boolean
@@ -264,6 +271,10 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
       continue
     }
 
+    const aliases = await library.getAliases()
+    const suggestion = aliases[groupName]
+    const suggestedQuery = suggestion || groupName
+
     const files = groups.get(groupName)!
     let selectedGame: any = null
     let groupResolved = false
@@ -286,6 +297,10 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
         selectedGame = res
         groupResolved = true
       }
+    }
+
+    if (!groupResolved && isInteractive && suggestion) {
+      p.log.message(`  \x1b[2mSuggested query: ${suggestion}\x1b[0m`)
     }
 
     // Refinement Loop
@@ -355,7 +370,7 @@ export async function parseAction(path?: string, isInteractive: boolean, flags: 
           selectedGame = null
         }
       } else if (action === 'search') {
-        const query = await p.text({ message: 'Search query:', initialValue: groupName })
+        const query = await p.text({ message: 'Search query:', initialValue: suggestedQuery })
         if (p.isCancel(query)) process.exit(0)
         
         let onlineFallback = true

@@ -72,6 +72,7 @@ export default (cli: CAC) => {
     .option('--platform <platform>', 'Filter by platform (comma separated)')
     .option('--content <type>', 'Filter local content (games, userdata)')
     .option('-l, --level <type>', 'Detail level: none, basic, full (default: basic)')
+    .option('-s, --suggest <query>', 'Pre-fill the search prompt with a suggestion')
     .option('--save', 'Save metadata of the online result to the local library')
     .option('--json', 'Output results in JSON format')
     .action(async (val1: string | undefined, val2: string | undefined, flags: any) => {
@@ -113,6 +114,7 @@ export default (cli: CAC) => {
         const response = await p.text({
           message: 'Enter the query:',
           placeholder: 'e.g. name:XCOM 2 or steam:268500',
+          initialValue: flags.suggest,
           validate: (v) => v.length === 0 ? 'Query is required' : undefined
         })
         if (p.isCancel(response)) process.exit(0)
