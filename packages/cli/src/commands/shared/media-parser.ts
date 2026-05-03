@@ -23,13 +23,13 @@ interface MediaConfig {
 const MEDIA_CONFIGS: Record<MediaType, MediaConfig> = {
   screenshot: {
     extensions: new Set(['.jpg', '.jpeg', '.png', '.webp']),
-    folderName: 'screenshots',
+    folderName: 'Screenshots',
     registryContext: 'screenshot',
     displayName: 'Screenshots'
   },
   clip: {
     extensions: new Set(['.mp4', '.mkv', '.mov', '.webm', '.avi']),
-    folderName: 'clips', // Following Orbit standard paths convention
+    folderName: 'Clips', // Following Orbit standard paths convention
     registryContext: 'video',
     displayName: 'Clips'
   }

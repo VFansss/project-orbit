@@ -148,12 +148,12 @@ Each user can be a local user, without a domain e.g. "alex" or contain a domain 
 
 Each gamefolder COULD have one of these subfolders
 
-- `screenshots`
+- `Screenshots`
   - will contain screenshots made by the user
   - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
     - e.g. ps1, pc, xbox
     - within, each subfolder will be a [game folder](#game-folder)
-- `savedata`
+- `Savedata`
   - Will contain savegames made by the user
   - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
     - e.g. ps1, pc, xbox

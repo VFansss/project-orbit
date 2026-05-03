@@ -46,6 +46,26 @@ export class LocalResolverService {
       return [];
     }
 
+    // Pre-calculate user paths to avoid doing readdir inside the O(N) games loop
+    const gamesRoot = this.paths.getLibraryPath('Games');
+    const userDataRoot = this.paths.getLibraryPath('UserData');
+    const activeUserPaths: { screenshots?: string, savedata?: string }[] = [];
+    
+    try {
+      const users = await readdir(userDataRoot);
+      for (const user of users) {
+        const userRoot = join(userDataRoot, user);
+        const userContents = await readdir(userRoot).catch(() => []);
+        const sFolder = userContents.find(f => f.toLowerCase() === 'screenshots');
+        const dFolder = userContents.find(f => f.toLowerCase() === 'savedata');
+        
+        activeUserPaths.push({
+          screenshots: sFolder ? join(userRoot, sFolder) : undefined,
+          savedata: dFolder ? join(userRoot, dFolder) : undefined
+        });
+      }
+    } catch {}
+
     for (const folder of folders) {
       const fullPath = join(platformPath, folder);
       let confidence: ConfidenceLevel = -1;
@@ -81,7 +101,7 @@ export class LocalResolverService {
           const tomlContent = await readFile(metadataPath, 'utf-8');
           metadata = parseToml(tomlContent) as any;
           
-          const getField = (obj: any, key: string) => obj[key] || obj.source?.[key] || obj.general?.[key];
+          const getField = (obj: any, key: string) => obj.ids?.[key] || obj[key] || obj.source?.[key] || obj.general?.[key];
           
           const steamId = getField(metadata, 'steam');
           const igdbId = getField(metadata, 'igdb');
@@ -106,26 +126,21 @@ export class LocalResolverService {
           if (yearMatch) year = parseInt(yearMatch[1]);
         }
 
-        const gamesRoot = this.paths.getLibraryPath('Games');
-        const userDataRoot = this.paths.getLibraryPath('UserData');
-        
         const gameFolderPath = join(gamesRoot, platform, folder);
         const existsInGames = await this.checkPathExists(gameFolderPath);
 
-        // Check UserData across ALL users to see if screenshots/savedata exist anywhere
+        // Check UserData across ALL users to see if Screenshots/Savedata exist anywhere
         let hasScreenshots = false;
         let hasSavedata = false;
-        try {
-          const users = await readdir(userDataRoot);
-          for (const user of users) {
-            if (!hasScreenshots) {
-              hasScreenshots = await this.checkPathExists(join(userDataRoot, user, 'screenshots', platform, folder));
-            }
-            if (!hasSavedata) {
-              hasSavedata = await this.checkPathExists(join(userDataRoot, user, 'savedata', platform, folder));
-            }
+        
+        for (const uPaths of activeUserPaths) {
+          if (!hasScreenshots && uPaths.screenshots) {
+            hasScreenshots = await this.checkPathExists(join(uPaths.screenshots, platform, folder));
           }
-        } catch {}
+          if (!hasSavedata && uPaths.savedata) {
+            hasSavedata = await this.checkPathExists(join(uPaths.savedata, platform, folder));
+          }
+        }
 
         results.push({
           confidence,
@@ -173,10 +188,18 @@ export class LocalResolverService {
           const users = await readdir(join(libraryRoot, 'UserData'));
           for (const user of users) {
             const userRoot = join(libraryRoot, 'UserData', user);
-            const sPlats = await readdir(join(userRoot, 'screenshots')).catch(() => []);
-            const dPlats = await readdir(join(userRoot, 'savedata')).catch(() => []);
-            sPlats.forEach(p => pSet.add(p));
-            dPlats.forEach(p => pSet.add(p));
+            const userContents = await readdir(userRoot).catch(() => []);
+            const screenshotsFolder = userContents.find(f => f.toLowerCase() === 'screenshots');
+            const savedataFolder = userContents.find(f => f.toLowerCase() === 'savedata');
+
+            if (screenshotsFolder) {
+              const sPlats = await readdir(join(userRoot, screenshotsFolder)).catch(() => []);
+              sPlats.forEach(p => pSet.add(p));
+            }
+            if (savedataFolder) {
+              const dPlats = await readdir(join(userRoot, savedataFolder)).catch(() => []);
+              dPlats.forEach(p => pSet.add(p));
+            }
           }
         } catch {}
       }
@@ -230,8 +253,17 @@ export class LocalResolverService {
         try {
           const users = await readdir(join(libraryRoot, 'UserData'));
           for (const user of users) {
-            mergeResults(await this.scanDirectory(join(libraryRoot, 'UserData', user, 'screenshots'), platform, query));
-            mergeResults(await this.scanDirectory(join(libraryRoot, 'UserData', user, 'savedata'), platform, query));
+            const userRoot = join(libraryRoot, 'UserData', user);
+            const userContents = await readdir(userRoot).catch(() => []);
+            const screenshotsFolder = userContents.find(f => f.toLowerCase() === 'screenshots');
+            const savedataFolder = userContents.find(f => f.toLowerCase() === 'savedata');
+
+            if (screenshotsFolder) {
+              mergeResults(await this.scanDirectory(join(libraryRoot, 'UserData', user, screenshotsFolder), platform, query));
+            }
+            if (savedataFolder) {
+              mergeResults(await this.scanDirectory(join(libraryRoot, 'UserData', user, savedataFolder), platform, query));
+            }
           }
         } catch {}
       }
