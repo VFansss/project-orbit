@@ -58,13 +58,36 @@ Example:
 
 ```toml
 [general]
+# The display name of the game
 name = "Grand Theft Auto V"
-aliases = ["GTA V","GTA 5"]
+# Alternative names for the game used during search and resolving
+aliases = ["GTA V", "GTA 5"]
+# A brief description of the game
+summary = "When a young street hustler, a retired bank robber and a terrifying psychopath..."
+# The release year of the game (stored as string for consistency)
+release_year = "2013"
+# List of genres
+genres = ["Action", "Adventure"]
+# Companies involved in the development
+developers = ["Rockstar North"]
+# Companies involved in the publishing
+publishers = ["Rockstar Games"]
+
+[ids]
+# External unique identifiers
 igdb = "1020"
 steam = "271590"
+# Platform-specific serial (e.g. SLUS-01234)
+serial = "BLUS-31156"
 
-[source]
-source = ["GOG","DVD Rip"] 
+# Information about where the metadata came from (can have multiple [[sources]])
+[[sources]]
+name = "IGDB"
+url = "https://www.igdb.com/games/grand-theft-auto-v"
+
+[[sources]]
+name = "Steam"
+url = "https://store.steampowered.com/app/271590"
 ```
 
 #### media
