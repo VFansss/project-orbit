@@ -1,7 +1,7 @@
 import type { CAC } from 'cac'
 import * as p from '@clack/prompts'
 import { Orbit } from '@orbit/core'
-import { parseMediaAction } from '../shared/media-parser'
+import { importMediaAction } from '../shared/media-parser'
 
 /**
  * Clip command router.
@@ -9,7 +9,7 @@ import { parseMediaAction } from '../shared/media-parser'
  */
 export default (cli: CAC) => {
   cli
-    .command('clip [action] [path]', 'Manage video clips (parse)')
+    .command('clip [action] [path]', 'Manage video clips (import)')
     .option('--platform <platform>', 'Default platform for clips')
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('--dry-run', 'Show what would be done without making changes', { default: false })
@@ -34,7 +34,7 @@ export default (cli: CAC) => {
         const response = await p.select({
           message: 'Select an action:',
           options: [
-            { value: 'parse', label: 'Parse', hint: 'Scan a folder for new video clips' },
+            { value: 'import', label: 'Import', hint: 'Scan a folder for new video clips' },
           ],
         })
         if (p.isCancel(response)) process.exit(0)
@@ -45,8 +45,8 @@ export default (cli: CAC) => {
 
       // 3. Dispatch to specific action logic
       try {
-        if (targetAction === 'parse') {
-          await parseMediaAction('clip', path, isInteractive, flags)
+        if (targetAction === 'import' || targetAction === 'parse') {
+          await importMediaAction('clip', path, isInteractive, flags)
         } else {
           console.error(`\x1b[31mError:\x1b[0m Unknown action "${targetAction}"`)
           process.exit(1)

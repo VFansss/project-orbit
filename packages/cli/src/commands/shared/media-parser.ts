@@ -180,9 +180,9 @@ async function scanFiles(dir: string, recursive: boolean, config: MediaConfig): 
 }
 
 /**
- * Generic logic for parsing media files (screenshots or clips).
+ * Generic logic for importing media files (screenshots or clips).
  */
-export async function parseMediaAction(mediaType: MediaType, path?: string, isInteractive: boolean = true, flags: any = {}) {
+export async function importMediaAction(mediaType: MediaType, path?: string, isInteractive: boolean = true, flags: any = {}) {
   // Suppress Node.js/Bun MaxListenersExceededWarning caused by rapid consecutive Clack prompts
   if (process.stdin.setMaxListeners) process.stdin.setMaxListeners(0)
   if (process.stdout.setMaxListeners) process.stdout.setMaxListeners(0)
@@ -208,7 +208,7 @@ export async function parseMediaAction(mediaType: MediaType, path?: string, isIn
     targetPath = response as string
   }
 
-  if (!targetPath) throw new Error('Path is required for parse action.')
+  if (!targetPath) throw new Error('Path is required for import action.')
   const absoluteSourcePath = resolvePath(targetPath)
 
   // 2. Platform Selection

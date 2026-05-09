@@ -1,7 +1,7 @@
 import type { CAC } from 'cac'
 import * as p from '@clack/prompts'
 import { Orbit } from '@orbit/core'
-import { parseMediaAction } from '../shared/media-parser'
+import { importMediaAction } from '../shared/media-parser'
 import { syncAction } from './sync'
 
 /**
@@ -10,7 +10,7 @@ import { syncAction } from './sync'
  */
 export default (cli: CAC) => {
   cli
-    .command('screenshot [action] [path]', 'Manage screenshots (parse, sync)')
+    .command('screenshot [action] [path]', 'Manage screenshots (import, sync)')
     .option('--platform <platform>', 'Default platform for screenshots')
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('--dry-run', 'Show what would be done without making changes', { default: false })
@@ -35,7 +35,7 @@ export default (cli: CAC) => {
         const response = await p.select({
           message: 'Select an action:',
           options: [
-            { value: 'parse', label: 'Parse', hint: 'Scan a folder for new screenshots' },
+            { value: 'import', label: 'Import', hint: 'Scan a folder for new screenshots' },
             { value: 'sync', label: 'Sync', hint: 'Update metadata' },
           ],
         })
@@ -47,8 +47,8 @@ export default (cli: CAC) => {
 
       // 3. Dispatch to specific action logic
       try {
-        if (targetAction === 'parse') {
-          await parseMediaAction('screenshot', path, isInteractive, flags)
+        if (targetAction === 'import' || targetAction === 'parse') {
+          await importMediaAction('screenshot', path, isInteractive, flags)
         } else if (targetAction === 'sync') {
           await syncAction(isInteractive)
         } else {
