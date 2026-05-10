@@ -15,4 +15,5 @@ export * from './state';
 export * from './search';
 export * from './user';
 export * from './logger';
+export * from './platforms';
 export const version = "0.1.0";
