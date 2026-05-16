@@ -124,6 +124,7 @@ This folder will contain checksum of files related to the game itself
 - CRC32
 - MD5
 - SHA1
+- SHA256
 
 Each file that contains checksum made with a certain algorithm will have the relative extension e.g. checksum.**md5**, checksum.**sha1**
 

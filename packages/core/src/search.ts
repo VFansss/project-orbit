@@ -3,30 +3,59 @@ import type { SearchResult, SearchType } from './models/search';
 import type { OrbitConfig } from './models/config';
 import { Logger } from './logger';
 import { mapIGDBToGame } from './mappers/igdb';
+import type { IDataGateway } from './gateway/types';
 
 export interface SearchOptions {
   type: SearchType;
-  query: string;
+  query: any;
   offline?: boolean;
 }
 
 /**
  * TODO: Unified search orchestrator using the global Logger.
  */
-export async function performSearch(options: SearchOptions, config: OrbitConfig): Promise<SearchResult[]> {
+export async function performSearch(gateway: IDataGateway, options: SearchOptions, config: OrbitConfig): Promise<SearchResult[]> {
   const results: SearchResult[] = [];
 
-  Logger.info(`Starting ${options.type} search for: "${options.query}"`);
+  Logger.info(`Starting ${options.type} search for: "${typeof options.query === 'object' ? JSON.stringify(options.query) : options.query}"`);
   
   if (!options.offline) {
-    const { igdbClientId, igdbClientSecret } = config.secrets;
-    
-    if (igdbClientId && igdbClientSecret) {
+    if (options.type === 'hash') {
+      try {
+        const body = typeof options.query === 'object' ? options.query : { md5: options.query };
+        const data = await gateway.request<any>({
+          uri: 'hasheous://api/v1/Lookup/ByHash',
+          method: 'POST',
+          body
+        });
+        
+        if (data && data.name) {
+          const ids: Record<string, string> = {};
+          if (data.metadata && Array.isArray(data.metadata)) {
+            for (const item of data.metadata) {
+              if (item.objectType === 'Game') {
+                if (item.source === 'IGDB') ids.igdb = String(item.id);
+                if (item.source === 'Steam') ids.steam = String(item.id);
+                if (item.source === 'RetroAchievements') ids.retroachievements = String(item.id);
+              }
+            }
+          }
+          results.push({
+            source: 'hasheous',
+            id: String(data.id),
+            name: data.name,
+            ids,
+            metadata: data
+          });
+        }
+      } catch (e) {
+        Logger.error(`Hasheous search failed.`);
+      }
+    } else {
       try {
         const igdbGames = await searchGames(
+          gateway,
           options.query, 
-          igdbClientId, 
-          igdbClientSecret, 
           options.type
         );
         
@@ -48,7 +77,7 @@ export async function performSearch(options: SearchOptions, config: OrbitConfig)
 
         // Sort results: 1. Exact matches first, 2. Shortest name first
         results.sort((a, b) => {
-          const queryLower = options.query.toLowerCase();
+          const queryLower = String(options.query).toLowerCase();
           const aExact = a.name.toLowerCase() === queryLower;
           const bExact = b.name.toLowerCase() === queryLower;
 

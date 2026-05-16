@@ -13,11 +13,13 @@ import { mapIGDBToGame } from './mappers/igdb';
 import type { Game } from './models/game';
 import type { IDataGateway } from './gateway/types';
 
-import { searchGames } from './integrations/igdb';
+import { searchGames, IGDBProvider } from './integrations/igdb';
+import { HasheousProvider } from './integrations/hasheous';
+import type { MetadataProvider, EnrichmentCapability } from './models/provider';
 
 export interface OrbitQuery {
   type: SearchType;
-  value: string;
+  value: string | Record<string, string>;
   platform?: string;
   isUrn: boolean;
 }
@@ -25,10 +27,42 @@ export interface OrbitQuery {
 export class LibraryService {
   private paths: PathService;
   private localResolver: LocalResolverService;
+  private providers: MetadataProvider[];
 
   constructor(private config: OrbitConfig, private gateway: IDataGateway) {
     this.paths = new PathService(config);
     this.localResolver = new LocalResolverService(config);
+    
+    // Initialize default metadata providers
+    this.providers = [
+      new HasheousProvider(this.gateway),
+      new IGDBProvider(this.gateway)
+    ];
+  }
+
+  /**
+   * Runs the game object through the enrichment pipeline based on requested capabilities.
+   */
+  async runEnrichmentPipeline(
+    initialGame: Partial<Game>, 
+    query?: OrbitQuery,
+    requiredCapabilities: EnrichmentCapability[] = ['identity', 'metadata']
+  ): Promise<Game> {
+    let contextGame = { ...initialGame };
+
+    // Filter providers that can fulfill at least one requested capability
+    const applicableProviders = this.providers.filter(p => 
+      p.capabilities.some(c => requiredCapabilities.includes(c))
+    );
+
+    for (const provider of applicableProviders) {
+      if (provider.canHandle(contextGame, query)) {
+        Logger.debug(`[Pipeline] Enriching with ${provider.name}...`);
+        contextGame = await provider.enrich(contextGame, query);
+      }
+    }
+
+    return contextGame as Game;
   }
 
   /**
@@ -104,14 +138,17 @@ export class LibraryService {
    * Fetches full metadata directly from the source API (e.g. IGDB) and returns a complete Game object.
    */
   async fetchFullGameData(source: string, id: string): Promise<Game | null> {
-    if (source === 'igdb' || source === 'steam') {
-      const searchType = source === 'igdb' ? 'igdb' : 'steam';
-      const results = await searchGames(this.gateway, id, searchType, 'full');
-      
-      if (!results || results.length === 0) return null;
-      return mapIGDBToGame(results[0]);
-    }
-    return null;
+    const query: OrbitQuery = {
+      type: source as any,
+      value: id,
+      isUrn: false
+    };
+
+    // Use the pipeline to fetch full data
+    const game = await this.runEnrichmentPipeline({ ids: { [source]: id } }, query, ['metadata']);
+    
+    if (!game || !game.name || game.name === 'Unknown') return null;
+    return game;
   }
 
   parseQuery(query: string): OrbitQuery {
@@ -125,10 +162,29 @@ export class LibraryService {
       }
     }
 
-    const shorthandMatch = query.match(/^([a-z_]+):(.+)$/);
+    const shorthandMatch = query.match(/^([a-z_0-9]+):(.+)$/i);
     if (shorthandMatch) {
-      const [, type, value] = shorthandMatch;
-      return { type: type as SearchType, value, isUrn: false };
+      let [, type, value] = shorthandMatch;
+      type = type.toLowerCase();
+      let parsedValue: string | Record<string, string> = value;
+
+      const hashAlgorithms = ['md5', 'sha1', 'sha256', 'crc', 'crc32'];
+      
+      if (hashAlgorithms.includes(type)) {
+        const algoKey = type === 'crc32' ? 'crc' : type;
+        parsedValue = { [algoKey]: value };
+        type = 'hash';
+      } else if (type === 'hash' && value.includes(':')) {
+        const colonIdx = value.indexOf(':');
+        const algo = value.substring(0, colonIdx).toLowerCase();
+        const hashVal = value.substring(colonIdx + 1);
+        if (hashAlgorithms.includes(algo)) {
+          const algoKey = algo === 'crc32' ? 'crc' : algo;
+          parsedValue = { [algoKey]: hashVal };
+        }
+      }
+
+      return { type: type as SearchType, value: parsedValue, isUrn: false };
     }
 
     return { type: 'name', value: query, isUrn: false };
@@ -191,7 +247,7 @@ export class LibraryService {
     // 2. Online resolution
     let onlineResults: ResolveResult[] = [];
     if (scope === 'online' || scope === 'both') {
-      const searchRes = await performSearch({
+      const searchRes = await performSearch(this.gateway, {
         type: query.type === 'serial' || query.type === 'path' || query.type === 'urn' ? 'name' : query.type,
         query: query.value,
         offline: false

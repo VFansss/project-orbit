@@ -1,30 +1,11 @@
-import type { SearchType } from '../models/search';
-import { Logger } from '../logger';
-import type { IDataGateway } from '../gateway/types';
+import type { SearchType } from '../../models/search';
+import { Logger } from '../../logger';
+import type { IDataGateway } from '../../gateway/types';
+import type { IGDBGame, IGDBDetailLevel } from './models';
 
-export type IGDBDetailLevel = 'basic' | 'full';
-
-export interface IGDBGame {
-  id: number;
-  name: string;
-  url?: string;
-  first_release_date?: number;
-  summary?: string;
-  platforms?: number[];
-  alternative_names?: Array<{ id: number; name: string }>;
-  external_games?: Array<{
-    uid: string;
-    external_game_source: number;
-  }>;
-  genres?: Array<{ id: number; name: string }>;
-  involved_companies?: Array<{
-    id: number;
-    developer: boolean;
-    publisher: boolean;
-    company: { id: number; name: string };
-  }>;
-}
-
+/**
+ * Low-level search function using the DataGateway.
+ */
 export async function searchGames(
   gateway: IDataGateway,
   query: string, 
@@ -57,12 +38,10 @@ export async function searchGames(
     body: apicalypseBody
   });
 
-  Logger.debug(`[IGDB] Raw JSON Response: ${JSON.stringify(rawData)}`);
-
   if (type === 'steam') {
     return rawData
       .filter(item => item && item.game)
-      .map(item => item.game); // Return the full game object
+      .map(item => item.game);
   }
 
   return rawData as IGDBGame[];

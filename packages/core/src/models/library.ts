@@ -57,5 +57,7 @@ export const URN_DEFINITIONS = [
   { type: 'igdb', example: 'igdb:1942', desc: 'Match by IGDB ID' },
   { type: 'serial', example: 'serial:SLUS-01234', desc: 'Match [ID] in folder name or metadata' },
   { type: 'path', example: 'path:/absolute/path', desc: 'Match by exact file system path' },
+  { type: 'hash', example: 'crc32:A0E138E6', desc: 'Match by ROM hash (md5, sha1, crc32...)' },
+  { type: 'hash_nested', example: 'hash:md5:HASH', desc: 'Alternative hash search format' },
   { type: 'urn', example: 'urn:orbit:steam:123', desc: 'Full Orbit URN format' },
 ] as const;

@@ -14,7 +14,8 @@ export const CONFIG_KEYS = [
   'currentLibraryPath',
   'logLevel', // Renamed from verbose
   'igdbClientId', 
-  'igdbClientSecret'
+  'igdbClientSecret',
+  'hasheousApiKey'
 ] as const;
 
 export type OrbitConfigKey = typeof CONFIG_KEYS[number];
@@ -30,6 +31,7 @@ export const OrbitConfigSchema = z.object({
   secrets: z.object({
     igdbClientId: z.string().optional(),
     igdbClientSecret: z.string().optional(),
+    hasheousApiKey: z.string().optional(),
   }).default({}),
 });
 
