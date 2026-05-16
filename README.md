@@ -22,5 +22,12 @@ A framework for collecting and organizing games (both retrogaming and modern), d
    bun orbit
    ```
 
+- **Launch the debugger from VS Code:**
+   ```bash
+   CTRL+P -> "Debug: Javascript Debug Terminal"
+   ```
+   then launch the CLI manually e.g. "bun orbit search"
+   Source [Link](https://www.reddit.com/r/sveltejs/comments/16fxbci/sveltekit_debugging_in_vscode/)
+
 ## 📖 Documentation
 Detailed documentation is manually managed in the `docs/` folder.
