@@ -11,6 +11,7 @@ import registerClip from './commands/clip'
 import registerConfig from './commands/config'
 import registerSearch from './commands/search'
 import registerStaging from './commands/staging'
+import registerHash from './commands/hash'
 
 const cli = cac('orbit')
 
@@ -54,6 +55,7 @@ async function main() {
     registerConfig(cli)
     registerSearch(cli)
     registerStaging(cli)
+    registerHash(cli)
 
     cli.help()
     cli.parse()
