@@ -40,6 +40,33 @@ export async function performSearch(gateway: IDataGateway, options: SearchOption
               }
             }
           }
+
+          // If we found an IGDB ID, let's chain the request to get rich metadata immediately
+          if (ids.igdb) {
+            try {
+              const igdbGames = await searchGames(gateway, ids.igdb, 'igdb', 'basic');
+              if (igdbGames && igdbGames.length > 0) {
+                const game = mapIGDBToGame(igdbGames[0]);
+                // Merge IDs from Hasheous that IGDB might not have (like RA)
+                const mergedIds = { ...ids, ...game.ids };
+                
+                results.push({
+                  source: 'hasheous',
+                  id: String(data.id),
+                  name: game.name,
+                  year: game.metadata.general.release_year,
+                  platform: game.platform === 'unknown' ? undefined : game.platform,
+                  ids: mergedIds,
+                  metadata: igdbGames[0] // Raw IGDB metadata for the UI
+                });
+                return results; // Return early, we got the rich data
+              }
+            } catch (err) {
+               Logger.debug(`Failed to chain IGDB search after Hasheous match: ${err}`);
+            }
+          }
+
+          // Fallback to basic Hasheous metadata if no IGDB link or IGDB request failed
           results.push({
             source: 'hasheous',
             id: String(data.id),
@@ -63,7 +90,11 @@ export async function performSearch(gateway: IDataGateway, options: SearchOption
           });
         }
       } catch (e: any) {
-        Logger.error(`Hasheous search failed: ${e.message}`);
+        if (e.message?.toLowerCase().includes('not found')) {
+          Logger.debug(`Hasheous: Hash not found in database.`);
+        } else {
+          Logger.error(`Hasheous search failed: ${e.message}`);
+        }
       }
     } else {
       try {

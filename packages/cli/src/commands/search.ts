@@ -204,18 +204,21 @@ export default (cli: CAC) => {
         printResult(selectedResult, showMetadata)
 
         if (flags.save) {
-          if (selectedResult.source === 'igdb' || selectedResult.source === 'steam') {
+          if (selectedResult.source === 'igdb' || selectedResult.source === 'steam' || selectedResult.source === 'hasheous') {
             const sSave = p.spinner()
             sSave.start('Saving metadata to library...')
             try {
               let gameToSave;
               if (selectedResult.ids.igdb || selectedResult.ids.steam) {
                 const idToFetch = selectedResult.ids.igdb || selectedResult.ids.steam;
-                const fullGame = await library.fetchFullGameData(selectedResult.source, idToFetch);
+                // Since hasheous relies on IGDB/Steam IDs for the actual data model now, we use that as the source
+                const sourceToFetch = selectedResult.ids.igdb ? 'igdb' : 'steam';
+                const fullGame = await library.fetchFullGameData(sourceToFetch, idToFetch);
                 if (fullGame) gameToSave = fullGame;
               }
               
               if (!gameToSave) {
+                // Fallback to whatever raw metadata we have
                 gameToSave = mapIGDBToGame(selectedResult.metadata)
               }
               
