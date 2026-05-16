@@ -3,17 +3,20 @@ import type { GatewayHandler, DataRequest } from '../../gateway/types';
 export class HasheousApiHandler implements GatewayHandler {
   labels = ['remote', 'api', 'hasheous'];
 
-  constructor(private apiKey: string) {}
+  constructor(private apiKey?: string) {}
 
   async handle(req: DataRequest): Promise<any> {
     const endpoint = req.uri.replace(/^hasheous:\/\//, '');
     
     const headers: Record<string, string> = {
-      'x-api-key': this.apiKey,
       'x-api-version': '1.0',
       'Accept': 'application/json',
       ...req.headers,
     };
+
+    if (this.apiKey) {
+      headers['x-api-key'] = this.apiKey;
+    }
 
     if (req.method === 'POST') {
       headers['Content-Type'] = 'application/json';

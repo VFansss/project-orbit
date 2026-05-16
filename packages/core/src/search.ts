@@ -48,8 +48,8 @@ export async function performSearch(gateway: IDataGateway, options: SearchOption
             metadata: data
           });
         }
-      } catch (e) {
-        Logger.error(`Hasheous search failed.`);
+      } catch (e: any) {
+        Logger.error(`Hasheous search failed: ${e.message}`);
       }
     } else {
       try {

@@ -28,9 +28,7 @@ async function initApp() {
   if (config.secrets.igdbClientId && config.secrets.igdbClientSecret) {
     gateway.registerHandler('igdb', new IGDBApiHandler(config.secrets.igdbClientId, config.secrets.igdbClientSecret));
   }
-  if (config.secrets.hasheousApiKey) {
-    gateway.registerHandler('hasheous', new HasheousApiHandler(config.secrets.hasheousApiKey));
-  }
+  gateway.registerHandler('hasheous', new HasheousApiHandler(config.secrets.hasheousApiKey));
 
   if (config.currentUser) Orbit.updateUser(config.currentUser)
   if (config.currentLibraryPath) Orbit.updateLibrary(config.currentLibraryPath)
