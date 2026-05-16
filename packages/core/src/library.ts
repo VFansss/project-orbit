@@ -258,7 +258,7 @@ export class LibraryService {
       }
 
       onlineResults = await Promise.all(searchRes.map(async r => {
-        const confidence: ConfidenceLevel = 2;
+        const confidence: ConfidenceLevel = r.source === 'hasheous' ? 1 : 2;
 
         // Use r.platform if present, otherwise use the first platform from options as a hint
         const hintedPlatform = r.platform || (options.platforms && options.platforms.length === 1 ? options.platforms[0] : undefined);

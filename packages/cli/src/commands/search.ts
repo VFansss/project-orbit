@@ -187,12 +187,13 @@ export default (cli: CAC) => {
         }
 
         // Fetch full metadata if requested and it's an online source
-        if (level === 'full' && (selectedResult.source === 'igdb' || selectedResult.source === 'steam')) {
+        if (level === 'full' && (selectedResult.source === 'igdb' || selectedResult.source === 'steam' || selectedResult.source === 'hasheous')) {
           const sFetch = p.spinner()
           sFetch.start('Fetching expanded metadata...')
           const idToFetch = selectedResult.ids.igdb || selectedResult.ids.steam;
-          if (idToFetch) {
-             const fullGame = await library.fetchFullGameData(selectedResult.source, idToFetch);
+          const sourceToFetch = selectedResult.ids.igdb ? 'igdb' : (selectedResult.ids.steam ? 'steam' : null);
+          if (idToFetch && sourceToFetch) {
+             const fullGame = await library.fetchFullGameData(sourceToFetch, idToFetch);
              if (fullGame) {
                selectedResult.metadata = fullGame.metadata; // Replace metadata
              }

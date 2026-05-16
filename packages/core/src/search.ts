@@ -45,7 +45,21 @@ export async function performSearch(gateway: IDataGateway, options: SearchOption
             id: String(data.id),
             name: data.name,
             ids,
-            metadata: data
+            metadata: {
+              general: {
+                name: data.name,
+                aliases: [],
+                summary: '',
+                release_year: undefined,
+                genres: [],
+                developers: [],
+                publishers: data.publisher?.name ? [data.publisher.name] : [],
+              },
+              ids,
+              sources: [
+                { name: 'Hasheous', url: 'https://hasheous.org/' }
+              ]
+            }
           });
         }
       } catch (e: any) {
