@@ -19,20 +19,22 @@ export const Logger = {
     currentLevel = level;
   },
 
-  error(msg: string) {
-    // Error is always shown unless we specifically implement a 'NONE' level.
-    console.error(`\x1b[31m[ERROR]\x1b[0m ${msg}`);
+  error(msg: string, newline = false) {
+    const prefix = newline ? '\n' : '';
+    console.error(`${prefix}\x1b[31m[ERROR]\x1b[0m ${msg}`);
   },
 
-  info(msg: string) {
+  info(msg: string, newline = false) {
     if (levels[currentLevel] >= levels['INFO']) {
-      console.log(`\x1b[34m[INFO]\x1b[0m ${msg}`);
+      const prefix = newline ? '\n' : '';
+      console.log(`${prefix}\x1b[34m[INFO]\x1b[0m ${msg}`);
     }
   },
 
-  debug(msg: string) {
+  debug(msg: string, newline = false) {
     if (levels[currentLevel] >= levels['DEBUG']) {
-      console.log(`\x1b[2m[DEBUG] ${msg}\x1b[0m`);
+      const prefix = newline ? '\n' : '';
+      console.log(`${prefix}\x1b[2m[DEBUG] ${msg}\x1b[0m`);
     }
   }
 };

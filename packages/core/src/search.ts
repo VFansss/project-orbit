@@ -93,7 +93,7 @@ export async function performSearch(gateway: IDataGateway, options: SearchOption
         if (e.message?.toLowerCase().includes('not found')) {
           Logger.debug(`Hasheous: Hash not found in database.`);
         } else {
-          Logger.error(`Hasheous search failed: ${e.message}`);
+          Logger.error(`Hasheous search failed: ${e.message}`, true);
         }
       }
     } else {
