@@ -12,8 +12,8 @@
     "build:all": "bun run build:linux && bun run build:windows"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "bun-types": "^1.3.13",
+    "@types/node": "^25.8.0",
+    "bun-types": "^1.3.14",
     "typescript": "latest"
   }
 }
