@@ -2,7 +2,8 @@
 node_modules/
 
 # IDEs and editors
-.vscode/
+.vscode/*
+!.vscode/launch.json
 .idea/
 *.swp
 *.swo
