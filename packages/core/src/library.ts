@@ -11,6 +11,7 @@ import { stringify, parse as parseToml } from 'smol-toml';
 import { mapGameToMetadata } from './mappers/metadata';
 import { mapIGDBToGame } from './mappers/igdb';
 import type { Game } from './models/game';
+import type { IDataGateway } from './gateway/types';
 
 import { searchGames } from './integrations/igdb';
 
@@ -25,7 +26,7 @@ export class LibraryService {
   private paths: PathService;
   private localResolver: LocalResolverService;
 
-  constructor(private config: OrbitConfig) {
+  constructor(private config: OrbitConfig, private gateway: IDataGateway) {
     this.paths = new PathService(config);
     this.localResolver = new LocalResolverService(config);
   }
@@ -36,7 +37,7 @@ export class LibraryService {
   async getAliases(): Promise<Record<string, string>> {
     try {
       const aliasPath = join(this.paths.getLibraryPath(), 'orbit.aliases.toml');
-      const content = await readFile(aliasPath, 'utf8');
+      const content = await this.gateway.request<string>(`file://${aliasPath}`);
       return parseToml(content) as Record<string, string>;
     } catch {
       return {};
@@ -59,7 +60,7 @@ export class LibraryService {
   async getIgnores(): Promise<string[]> {
     try {
       const ignorePath = join(this.paths.getLibraryPath(), 'orbit.ignores.toml');
-      const content = await readFile(ignorePath, 'utf8');
+      const content = await this.gateway.request<string>(`file://${ignorePath}`);
       const data = parseToml(content) as { ignores?: string[] };
       return data.ignores || [];
     } catch {
@@ -104,11 +105,8 @@ export class LibraryService {
    */
   async fetchFullGameData(source: string, id: string): Promise<Game | null> {
     if (source === 'igdb' || source === 'steam') {
-      const { igdbClientId, igdbClientSecret } = this.config.secrets;
-      if (!igdbClientId || !igdbClientSecret) throw new Error("Missing IGDB credentials.");
-      
       const searchType = source === 'igdb' ? 'igdb' : 'steam';
-      const results = await searchGames(id, igdbClientId, igdbClientSecret, searchType, 'full');
+      const results = await searchGames(this.gateway, id, searchType, 'full');
       
       if (!results || results.length === 0) return null;
       return mapIGDBToGame(results[0]);

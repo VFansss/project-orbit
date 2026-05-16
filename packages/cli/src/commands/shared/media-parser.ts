@@ -10,6 +10,7 @@ import { loadConfig } from '../../storage'
 import { OperationBatch, CopyFileCommand, MoveFileCommand } from './operations'
 import { cleanStagingAction } from '../staging'
 import { formatResultForSelect } from '../ui-utils'
+import { gateway } from '../../index'
 
 export type MediaType = 'screenshot' | 'clip'
 

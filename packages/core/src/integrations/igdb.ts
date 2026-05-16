@@ -1,5 +1,6 @@
 import type { SearchType } from '../models/search';
 import { Logger } from '../logger';
+import type { IDataGateway } from '../gateway/types';
 
 export type IGDBDetailLevel = 'basic' | 'full';
 
@@ -24,23 +25,12 @@ export interface IGDBGame {
   }>;
 }
 
-async function getAccessToken(clientId: string, clientSecret: string): Promise<string> {
-  const url = `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`;
-  const response = await fetch(url, { method: 'POST' });
-  if (!response.ok) throw new Error(`IGDB Authentication failed.`);
-  const data = await response.json() as any;
-  return data.access_token;
-}
-
 export async function searchGames(
+  gateway: IDataGateway,
   query: string, 
-  clientId: string, 
-  clientSecret: string, 
   type: SearchType = 'name',
   detailLevel: IGDBDetailLevel = 'basic'
 ): Promise<IGDBGame[]> {
-  const token = await getAccessToken(clientId, clientSecret);
-  
   let endpoint = 'games';
   let apicalypseBody = '';
 
@@ -62,23 +52,11 @@ export async function searchGames(
   Logger.debug(`[IGDB] Requesting endpoint: ${endpoint}`);
   Logger.debug(`[IGDB] Query body: ${apicalypseBody}`);
   
-  const response = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Client-ID': clientId,
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json',
-    },
-    body: apicalypseBody,
+  const rawData = await gateway.request<any[]>({
+    uri: `igdb://${endpoint}`,
+    body: apicalypseBody
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    Logger.error(`IGDB API Error: ${errorText}`);
-    throw new Error(`IGDB API request failed.`);
-  }
-
-  const rawData = await response.json() as any[];
   Logger.debug(`[IGDB] Raw JSON Response: ${JSON.stringify(rawData)}`);
 
   if (type === 'steam') {

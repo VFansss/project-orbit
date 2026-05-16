@@ -3,6 +3,7 @@ import * as p from '@clack/prompts'
 import { LibraryService, URN_DEFINITIONS, type ResolveResult, mapIGDBToGame } from '@orbit/core'
 import { loadConfig } from '../storage'
 import { formatResultForSelect } from './ui-utils'
+import { gateway } from '../index'
 
 export default (cli: CAC) => {
   const displayUrnLegend = () => {
@@ -69,15 +70,15 @@ export default (cli: CAC) => {
 
   cli
     .command('search [val1] [val2]', 'Search for games in library or online')
-    .option('--platform <platform>', 'Filter by platform (comma separated)')
-    .option('--content <type>', 'Filter local content (games, userdata)')
-    .option('-l, --level <type>', 'Detail level: none, basic, full (default: basic)')
-    .option('-s, --suggest <query>', 'Pre-fill the search prompt with a suggestion')
-    .option('--save', 'Save metadata of the online result to the local library')
-    .option('--json', 'Output results in JSON format')
-    .action(async (val1: string | undefined, val2: string | undefined, flags: any) => {
-      const config = await loadConfig()
-      const library = new LibraryService(config)
+        .option('--platform <platform>', 'Filter by platform (comma separated)')
+        .option('--content <type>', 'Filter local content (games, userdata)')
+        .option('-l, --level <type>', 'Detail level: none, basic, full (default: basic)')
+        .option('-s, --suggest <query>', 'Pre-fill the search prompt with a suggestion')
+        .option('--save', 'Save metadata of the online result to the local library')
+        .option('--json', 'Output results in JSON format')
+        .action(async (val1: string | undefined, val2: string | undefined, flags: any) => {
+          const config = await loadConfig()
+          const library = new LibraryService(config, gateway)
 
       // Determine scope and query
       let scope: 'local' | 'online' | 'both' = 'both'

@@ -1,5 +1,5 @@
 import { cac } from 'cac'
-import { Orbit, version } from '@orbit/core'
+import { Orbit, version, LocalNodeGateway, IGDBApiHandler, LocalFsHandler } from '@orbit/core'
 import { loadConfig } from './storage'
 
 // Commands
@@ -14,6 +14,8 @@ import registerStaging from './commands/staging'
 
 const cli = cac('orbit')
 
+export const gateway = new LocalNodeGateway();
+
 /**
  * TODO: Initialize the core state.
  */
@@ -21,6 +23,12 @@ async function initApp() {
   const config = await loadConfig()
   Orbit.init({ os: process.platform as any, arch: process.arch, isMobile: false }, config.logLevel)
   
+  // Register Gateway Handlers
+  gateway.registerHandler('file', new LocalFsHandler());
+  if (config.secrets.igdbClientId && config.secrets.igdbClientSecret) {
+    gateway.registerHandler('igdb', new IGDBApiHandler(config.secrets.igdbClientId, config.secrets.igdbClientSecret));
+  }
+
   if (config.currentUser) Orbit.updateUser(config.currentUser)
   if (config.currentLibraryPath) Orbit.updateLibrary(config.currentLibraryPath)
 
