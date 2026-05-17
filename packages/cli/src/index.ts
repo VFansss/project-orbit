@@ -57,7 +57,35 @@ async function main() {
     registerStaging(cli)
     registerHash(cli)
 
-    cli.help()
+    cli.help((sections) => {
+      const cmdsIndex = sections.findIndex(s => s.title === 'Commands')
+      if (cmdsIndex !== -1) {
+        const bodyLines = sections[cmdsIndex].body.split('\n')
+        
+        const getCmds = (prefixes: string[]) => bodyLines.filter(line => prefixes.some(p => line.trim().startsWith(p))).join('\n')
+
+        const setup = getCmds(['login', 'library', 'config'])
+        const myLibrary = getCmds(['status', 'search'])
+        const myMedia = getCmds(['screenshot', 'clip'])
+        const maintenance = getCmds(['staging', 'hash'])
+
+        sections.splice(cmdsIndex, 1,
+          { title: '\x1b[35mSetup\x1b[0m', body: setup },
+          { title: '\x1b[36mMy Library\x1b[0m', body: myLibrary },
+          { title: '\x1b[32mMy Media\x1b[0m', body: myMedia },
+          { title: '\x1b[33mMaintenance\x1b[0m', body: maintenance }
+        )
+      }
+
+      // Remove the redundant list of command help examples
+      const extraIndex = sections.findIndex(s => s.title?.includes('For more info'))
+      if (extraIndex !== -1) {
+        sections.splice(extraIndex, 1, {
+          title: 'Tip',
+          body: 'Run \x1b[1morbit <command> --help\x1b[0m for more information on a specific command.'
+        })
+      }
+    })
     cli.parse()
 
     if (!cli.matchedCommand && process.argv.length <= 2) {
