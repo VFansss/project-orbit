@@ -1,5 +1,5 @@
 import { cac } from 'cac'
-import { Orbit, version, LocalNodeGateway, IGDBApiHandler, LocalFsHandler, HasheousApiHandler } from '@orbit/core'
+import { Orbit, version, LocalNodeGateway, IgdbHandler, LocalFsHandler, HasheousHandler } from '@orbit/core'
 import { loadConfig } from './storage'
 
 // Commands
@@ -27,9 +27,9 @@ async function initApp() {
   // Register Gateway Handlers
   gateway.registerHandler('file', new LocalFsHandler());
   if (config.secrets.igdbClientId && config.secrets.igdbClientSecret) {
-    gateway.registerHandler('igdb', new IGDBApiHandler(config.secrets.igdbClientId, config.secrets.igdbClientSecret));
+    gateway.registerHandler('igdb', new IgdbHandler(config.secrets.igdbClientId, config.secrets.igdbClientSecret));
   }
-  gateway.registerHandler('hasheous', new HasheousApiHandler(config.secrets.hasheousApiKey));
+  gateway.registerHandler('hasheous', new HasheousHandler(config.secrets.hasheousApiKey));
 
   if (config.currentUser) Orbit.updateUser(config.currentUser)
   if (config.currentLibraryPath) Orbit.updateLibrary(config.currentLibraryPath)

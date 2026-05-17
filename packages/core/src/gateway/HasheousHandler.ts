@@ -1,6 +1,6 @@
-import type { GatewayHandler, DataRequest } from '../../gateway/types';
+import type { GatewayHandler, DataRequest } from './types';
 
-export class HasheousApiHandler implements GatewayHandler {
+export class HasheousHandler implements GatewayHandler {
   labels = ['remote', 'api', 'hasheous'];
 
   constructor(private apiKey?: string) {}

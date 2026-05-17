@@ -1,3 +1,5 @@
 export * from './types';
 export * from './LocalNodeGateway';
-export * from './handlers';
+export * from './LocalFsHandler';
+export * from './IgdbHandler';
+export * from './HasheousHandler';
