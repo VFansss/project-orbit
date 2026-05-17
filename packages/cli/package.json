@@ -6,6 +6,10 @@
     "@clack/prompts": "^1.2.0",
     "@orbit/core": "workspace:*",
     "cac": "latest",
-    "smol-toml": "^1.6.1"
+    "smol-toml": "^1.6.1",
+    "yauzl": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/yauzl": "^2.10.3"
   }
 }

@@ -19,5 +19,4 @@ export * from './logger';
 export * from './platforms';
 export * from './models/provider';
 export * from './gateway';
-export * from './utils/hashing';
 export const version = "0.1.0";
