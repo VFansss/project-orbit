@@ -1,4 +1,8 @@
 import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { basename } from 'node:path';
+import yauzl from 'yauzl';
+import type { Readable } from 'node:stream';
 
 /**
  * Supported hash algorithms.
@@ -13,6 +17,12 @@ export interface FileHashes {
   md5?: string;
   sha1?: string;
   sha256?: string;
+}
+
+export interface HashResult {
+  file: string;
+  size: number;
+  hashes: FileHashes;
 }
 
 /**
@@ -48,14 +58,9 @@ class CRC32 {
 }
 
 /**
- * Calculates requested hashes for a file using streaming.
- * @param filePath Path to the file.
- * @param algorithms Array of algorithms to compute. Defaults to all.
+ * Helper to calculate hashes from any Readable stream.
  */
-export async function calculateFileHashes(
-  filePath: string, 
-  algorithms: HashAlgorithm[] = ['crc32', 'md5', 'sha1', 'sha256']
-): Promise<FileHashes> {
+function calculateHashesFromStream(stream: Readable, algorithms: HashAlgorithm[]): Promise<FileHashes> {
   return new Promise((resolve, reject) => {
     const hashers: Record<string, any> = {};
     
@@ -63,8 +68,6 @@ export async function calculateFileHashes(
     if (algorithms.includes('sha1')) hashers.sha1 = new Bun.CryptoHasher("sha1");
     if (algorithms.includes('sha256')) hashers.sha256 = new Bun.CryptoHasher("sha256");
     if (algorithms.includes('crc32')) hashers.crc32 = new CRC32();
-
-    const stream = createReadStream(filePath);
 
     stream.on('data', (chunk: Buffer) => {
       const uint8 = new Uint8Array(chunk);
@@ -84,7 +87,89 @@ export async function calculateFileHashes(
     });
 
     stream.on('error', (err) => {
-      reject(new Error(`Failed to calculate hashes: ${err.message}`));
+      reject(new Error(`Stream error during hashing: ${err.message}`));
     });
   });
+}
+
+/**
+ * Extracts and hashes files inside a ZIP archive entirely in memory.
+ */
+function hashZipEntries(filePath: string, algorithms: HashAlgorithm[]): Promise<HashResult[]> {
+  return new Promise((resolve, reject) => {
+    const results: HashResult[] = [];
+    
+    yauzl.open(filePath, { lazyEntries: true }, (err, zipfile) => {
+      if (err || !zipfile) return reject(err || new Error("Failed to open zip"));
+
+      zipfile.readEntry();
+
+      zipfile.on("entry", (entry: yauzl.Entry) => {
+        if (/\/$/.test(entry.fileName)) {
+          // Directory file names end with '/'. Skip them.
+          zipfile.readEntry();
+        } else {
+          // File entry
+          zipfile.openReadStream(entry, async (err, readStream) => {
+            if (err || !readStream) return reject(err || new Error("Failed to read zip entry"));
+            
+            try {
+              const hashes = await calculateHashesFromStream(readStream, algorithms);
+              results.push({
+                file: entry.fileName,
+                size: entry.uncompressedSize,
+                hashes
+              });
+              zipfile.readEntry(); // Read next entry
+            } catch (streamErr) {
+              reject(streamErr);
+            }
+          });
+        }
+      });
+
+      zipfile.on("end", () => {
+        resolve(results);
+      });
+
+      zipfile.on("error", (err) => {
+        reject(err);
+      });
+    });
+  });
+}
+
+/**
+ * Calculates requested hashes for a file using streaming.
+ * If the file is a .zip, it calculates hashes for all internal files in memory.
+ * 
+ * @param filePath Path to the file.
+ * @param algorithms Array of algorithms to compute. Defaults to all.
+ * @param allowLargeFiles If false, throws an error if file size > 1GB.
+ */
+export async function calculateFileHashes(
+  filePath: string, 
+  algorithms: HashAlgorithm[] = ['crc32', 'md5', 'sha1', 'sha256'],
+  allowLargeFiles: boolean = false
+): Promise<HashResult[]> {
+  
+  const stats = await stat(filePath);
+  const sizeGB = stats.size / (1024 * 1024 * 1024);
+  
+  if (sizeGB > 1 && !allowLargeFiles) {
+    throw new Error(`File is too large (${sizeGB.toFixed(2)} GB). Safety block active. Use the correct flag to allow large files.`);
+  }
+
+  if (filePath.toLowerCase().endsWith('.zip')) {
+    return await hashZipEntries(filePath, algorithms);
+  } else {
+    // Normal file
+    const stream = createReadStream(filePath);
+    const hashes = await calculateHashesFromStream(stream, algorithms);
+    return [{
+      file: basename(filePath),
+      size: stats.size,
+      hashes
+    }];
+  }
 }

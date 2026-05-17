@@ -11,6 +11,7 @@ export default (cli: CAC) => {
   cli
     .command('hash [action] [path]', 'Calculate file hashes (calculate)')
     .option('--algo <algorithms>', 'Comma separated algorithms (crc32,md5,sha1,sha256)')
+    .option('--allow-large', 'Allow hashing files larger than 1GB')
     .action(async (action?: string, path?: string, flags?: any) => {
       let targetAction = action
       let targetPath = path
@@ -75,18 +76,31 @@ export default (cli: CAC) => {
       }
 
       // 4. Execution
+      const isZip = absolutePath.toLowerCase().endsWith('.zip')
       const s = p.spinner()
-      s.start(`Calculating hashes for: ${targetPath}...`)
+      if (isZip) {
+        s.start(`Analyzing ZIP contents in memory: ${targetPath}...`)
+      } else {
+        s.start(`Calculating hashes for: ${targetPath}...`)
+      }
       
       try {
-        const results = await calculateFileHashes(absolutePath, algorithms)
+        const results = await calculateFileHashes(absolutePath, algorithms, flags.allowLarge)
         s.stop('Calculation finished.')
 
+        if (isZip) {
+          console.log(`\n\x1b[33mNote:\x1b[0m Evaluated internal contents of ZIP archive.`)
+        }
+
         console.log(`\n\x1b[34m--- Results ---\x1b[0m`)
-        if (results.crc32) console.log(`\x1b[1mCRC32:\x1b[0m  ${results.crc32}`)
-        if (results.md5)   console.log(`\x1b[1mMD5:\x1b[0m    ${results.md5}`)
-        if (results.sha1)  console.log(`\x1b[1mSHA1:\x1b[0m   ${results.sha1}`)
-        if (results.sha256)console.log(`\x1b[1mSHA256:\x1b[0m ${results.sha256}`)
+        for (const res of results) {
+          console.log(`\x1b[1mFile:\x1b[0m ${res.file} (${(res.size / 1024 / 1024).toFixed(2)} MB)`)
+          if (res.hashes.crc32) console.log(`  \x1b[1mCRC32:\x1b[0m  ${res.hashes.crc32}`)
+          if (res.hashes.md5)   console.log(`  \x1b[1mMD5:\x1b[0m    ${res.hashes.md5}`)
+          if (res.hashes.sha1)  console.log(`  \x1b[1mSHA1:\x1b[0m   ${res.hashes.sha1}`)
+          if (res.hashes.sha256)console.log(`  \x1b[1mSHA256:\x1b[0m ${res.hashes.sha256}`)
+          console.log('')
+        }
         console.log(`\x1b[34m---------------\x1b[0m\n`)
 
       } catch (err: any) {
