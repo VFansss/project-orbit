@@ -1,5 +1,5 @@
 # nes - Nintendo Entertainment System
 
-## Online references
+## Data sources
 
 Fantastic source of informations: https://www.thelegendofnes.com

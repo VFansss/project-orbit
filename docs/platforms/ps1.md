@@ -1,6 +1,6 @@
 # PS1 - Sony Playstation (PSX)
 
-## Game identifiers
+## Serial
 
 PS1 games have unique codes that identify game region:
 
