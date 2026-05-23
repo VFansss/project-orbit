@@ -1,5 +1,25 @@
 # Library Structure
 
+- [Library Structure](#library-structure)
+  - [orbit.library.toml](#orbitlibrarytoml)
+  - [Metadata](#metadata)
+    - [Game Folders - in Metadata](#game-folders---in-metadata)
+      - [metadata.toml](#metadatatoml)
+      - [media](#media)
+  - [Games](#games)
+    - [Platform Folders - in Games](#platform-folders---in-games)
+      - [Game Folders - in Games](#game-folders---in-games)
+        - [checksum](#checksum)
+  - [UserData](#userdata)
+    - [Profile folders](#profile-folders)
+      - [Screenshots](#screenshots)
+        - [Platform Folders - in Screenshots](#platform-folders---in-screenshots)
+          - [Game Folders - in Screenshots](#game-folders---in-screenshots)
+      - [Savedata](#savedata)
+  - [Example and details](#example-and-details)
+    - [Game Folders - naming convention](#game-folders---naming-convention)
+
+
 **General structure or root folder:**
 
 - **_Staging**
@@ -17,12 +37,12 @@
       - `metadata.toml`: The main information file for the game.
       - `media/`: Subfolder for covers, artworks, icons, etc.
 - **Games**
-    - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
+  - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
   - Main content: games divided by platform.
   - **Platform Folders**
     - **Game Folders**
       - Contains only the game binaries/files.
-- **UserData** - more details [here](#userdata)
+- **UserData** - more details [in the separate section](#userdata)
 - **Exports**
   - Will contain inner folders usable by external tools like EmulationStation or Romm
 
@@ -46,7 +66,13 @@ created_at = 2026-04-23T19:32:42.188Z
 
 This folder is the "Brain" of the library. It stores all persistent information about games that is shared across all users.
 
-### Game Folders - metadata
+### Game Folders - in Metadata
+
+**Naming:**
+
+More details [in the separate section](#game-folders---naming-convention)
+
+**Content:**
 
 Each game folder in `Metadata/<platform>/<game>/` contains:
 
@@ -96,20 +122,24 @@ Contains visual assets for the game. These are usually managed by Orbit and shou
 
 ## Games
 
-### Platform Folders
+### Platform Folders - in Games
 
-#### Game Folders
+#### Game Folders - in Games
+
+**Naming:**
+
+More details [in the separate section](#game-folders---naming-convention)
+
+**Content:**
 
 Generally speaking, every file here is intended as "part" of the game (binaries, data files, etc.).
 No metadata or orbit-specific configuration files should be stored here.
-
-**Content:**
 
 Each gamefolder COULD have one of these subfolders
 
 - `checksum`
   - Will contain files used to calculate EVERY files inside the main game folder, with certain exceptions
-  - More details [here](#game-folders---checksum)
+  - More details [in the separate section](#checksum)
 - `"game edition"`
   - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
   - These kind of subfolders are, in fact, game folders
@@ -143,7 +173,7 @@ Each folder here will contain data related to an user.
 
 ### Profile folders
 
-Each user can be a local user, without a domain e.g. "alex" or contain a domain e.g. "alex@gmail.com" or "alex@mydomain.com"
+Each user can be a local user, without a domain e.g. "alex" or contain a domain e.g. `alex@gmail.com` or `alex@mydomain.com`
 
 **Content:**
 
@@ -153,20 +183,24 @@ Each gamefolder COULD have one of these subfolders
   - will contain screenshots made by the user
   - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
     - e.g. ps1, pc, xbox
-    - within, each subfolder will be a [game folder](#game-folder)
+    - within, each subfolder will be a [game folder](#game-folders---in-screenshots)
 - `Savedata`
   - Will contain savegames made by the user
   - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
     - e.g. ps1, pc, xbox
-    - within, each subfolder will be a [game folder](#game-folder)
+    - within, each subfolder will be a [game folder](#game-folders---naming-convention)
 
 #### Screenshots
 
-##### Platform Folders
+##### Platform Folders - in Screenshots
 
-###### Game Folders
+###### Game Folders - in Screenshots
 
-Note: this kind of folder can be in multiple locations. To check what has in common for every instance, check more details [here](#game-folders---general-details)
+**Naming:**
+
+More details [in the separate section](#game-folders---naming-convention)
+
+**Content:**
 
 Will contain screenshots made by an user regarding a certain game.
 
@@ -187,7 +221,7 @@ Files follow a sortable, human-readable and extensible format:
 
 Examples:
 
-- **Base Minimum:** `2026-04-24 19-30-15.png`
+- **Bare Minimum:** `2026-04-24 19-30-15.png`
 - **Collision Handling:** `2026-04-24 19-30-15_1.png`
 - **With Description:** `2026-04-24 19-30-15 - Final Boss.png`
 - **With Description & Tags:** `2026-04-24 19-30-15 - Final Boss (Hud Removed).png`
@@ -195,26 +229,26 @@ Examples:
 - **Complete Stack (Desc + Tag + Original):** `2026-04-24 19-30-15 - Final Boss (Hud Removed) (Alpha Protocol 11_02_2024 13_34_23).png`
 
 No separate metadata files are planned for screenshots; the filename is the database.
+
 #### Savedata
 
 TODO:
 
-## Folders Example
+## Example and details
 
-### Game Folders - general details
-
-#### Naming convention
-
-DECISION: what to do with MAME and more "files heavy directories" e.g. GBA?
+### Game Folders - naming convention
 
 A folder is named using these tokens:
 
-- "Game Name" (Year)
-- Attributes - separated with `()`
+- "Game Name"
+  - Mandatory for obvious reasons
+- "({Year})"
+  - It's not mandatory, but it's 100% adviced for long term storage. A folder without a years it's...ok-is
 - Unique Id, if present - separated with `[]`
-  - The unique id can be present ONLY if a true unique id is available for that platform.
+  - The unique id can be present ONLY if a true unique id is available for that platform
+  
+**Examples:**
 
-### Platform Folders
-
-TODO:
-
+- **Bare Minimum:** `My Game`
+- **Well formed (Best):** `My Game (2012)`
+- **Well formed, with Serial (Better):** `My Game (2012) [CODE-XXX]`
