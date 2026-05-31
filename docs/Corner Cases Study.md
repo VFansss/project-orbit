@@ -116,6 +116,7 @@ Blockers:
 - I'm not sure how to safely store "patch", "DLCs" and extra things inside the game folder
 - I'm not sure how to store the "encryption key" somewhere
 
+<<<<<<< HEAD
 #### 🔴 Store bios files
 
 Context:
@@ -133,4 +134,6 @@ Ideas:
 - Support both solutions above at the same time?
   - What should be the "official" way to do this, and what use as a fallback?
 
+=======
+>>>>>>> fa2028c8aa891759c04dc91cd4ef1c964493f3f1
 ### Closed
