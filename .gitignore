@@ -15,3 +15,7 @@ Thumbs.db
 
 # Build outputs
 dist/
+
+# Temporary test directories
+fixtures/.*
+.temp-*
