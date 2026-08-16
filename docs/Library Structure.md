@@ -64,61 +64,10 @@ created_at = 2026-04-23T19:32:42.188Z
 
 ## Metadata
 
-This folder is the "Brain" of the library. It stores all persistent information about games that is shared across all users.
+This folder is the "Brain" of the library. It stores all persistent information about games that is shared across all users (`metadata.toml` and optional raw `_sources/` cache).
 
-### Game Folders - in Metadata
+For full details on the TOML schema, `[general]`, `[ids]`, `[relations]`, `[[sources]]`, and raw payload caching, see the dedicated [Metadata Documentation](./Metadata.md).
 
-**Naming:**
-
-More details [in the separate section](#game-folders---naming-convention)
-
-**Content:**
-
-Each game folder in `Metadata/<platform>/<game>/` contains:
-
-#### metadata.toml
-
-The only file that should be manually edited by the user. It contains general information, IDs, and source links.
-
-Example:
-
-```toml
-[general]
-# The display name of the game
-name = "Grand Theft Auto V"
-# Alternative names for the game used during search and resolving
-aliases = ["GTA V", "GTA 5"]
-# A brief description of the game
-summary = "When a young street hustler, a retired bank robber and a terrifying psychopath..."
-# The release year of the game (stored as string for consistency)
-release_year = "2013"
-# List of genres
-genres = ["Action", "Adventure"]
-# Companies involved in the development
-developers = ["Rockstar North"]
-# Companies involved in the publishing
-publishers = ["Rockstar Games"]
-
-[ids]
-# External unique identifiers
-igdb = "1020"
-steam = "271590"
-# Platform-specific serial (e.g. SLUS-01234)
-serial = "BLUS-31156"
-
-# Information about where the metadata came from (can have multiple [[sources]])
-[[sources]]
-name = "IGDB"
-url = "https://www.igdb.com/games/grand-theft-auto-v"
-
-[[sources]]
-name = "Steam"
-url = "https://store.steampowered.com/app/271590"
-```
-
-#### media
-
-Contains visual assets for the game. These are usually managed by Orbit and should be treated as read-only.
 
 ## Games
 
