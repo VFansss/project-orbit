@@ -15,10 +15,11 @@ export async function searchGames(
   let endpoint = 'games';
   let apicalypseBody = '';
 
-  let fields = 'name, url, first_release_date, summary, platforms, alternative_names.name, external_games.*';
+  let fields = 'name, url, first_release_date, summary, platforms, alternative_names.name, external_games.*, franchise.name, franchises.name, collection.name, collections.name';
   if (detailLevel === 'full') {
     fields += ', genres.name, involved_companies.developer, involved_companies.publisher, involved_companies.company.name';
   }
+
 
   if (type === 'steam') {
     endpoint = 'external_games';

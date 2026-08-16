@@ -28,11 +28,13 @@ export const OrbitConfigSchema = z.object({
   currentUser: z.string().optional(),
   currentLibraryPath: z.string().optional(),
   logLevel: LogLevelSchema.default('ERROR'),
+  keep_raw_sources: z.boolean().default(true),
   secrets: z.object({
     igdbClientId: z.string().optional(),
     igdbClientSecret: z.string().optional(),
     hasheousApiKey: z.string().optional(),
   }).default({}),
 });
+
 
 export type OrbitConfig = z.infer<typeof OrbitConfigSchema>;

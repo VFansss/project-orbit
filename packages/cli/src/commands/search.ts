@@ -222,8 +222,13 @@ export default (cli: CAC) => {
                 gameToSave = mapIGDBToGame(selectedResult.metadata)
               }
               
+              if (!gameToSave.platform || gameToSave.platform === 'unknown') {
+                gameToSave.platform = selectedResult.platform || (flags.platform ? flags.platform.split(',')[0] : 'unknown');
+              }
+              
               const path = await library.saveMetadata(gameToSave)
               sSave.stop(`Metadata saved at: ${path}`)
+
             } catch (err: any) {
               sSave.stop('Failed to save metadata.', 1)
               console.error(`\x1b[31mError:\x1b[0m ${err.message}`)

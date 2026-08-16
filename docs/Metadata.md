@@ -32,9 +32,10 @@ Each game entry under `Metadata/<platform>/<game>/` contains the following layou
 ```text
 Metadata/<platform>/<game>/
 ├── metadata.toml      # Main information file (manually editable & machine generated)
-└── _sources/          # Raw API responses from scrapers (optional / cache)
-    ├── igdb.json
-    └── steam.json
+└── sources/           # Raw API responses from scrapers (optional / cache)
+    ├── igdb.2026-08-16T11-17-39Z.json
+    └── steam.2026-08-16T11-17-39Z.json
+
 ```
 
 ---
@@ -130,16 +131,16 @@ fetched_at = "2026-08-16T11:10:20Z"
 
 ---
 
-## 4. Scraper Raw Payload Cache (`_sources/`)
+## 4. Scraper Raw Payload Cache (`sources/`)
 
 ### 4.1 Purpose & Offline-First Strategy
 
-When Orbit fetches data from external APIs (IGDB, Steam, SteamGridDB), it saves the **100% raw, untouched JSON payload** returned by the server into `_sources/<provider>.<TIMESTAMP>.json` (e.g., `_sources/igdb.2026-08-16T11-17-39Z.json`).
+When Orbit fetches data from external APIs (IGDB, Steam, SteamGridDB), it saves the **100% raw, untouched JSON payload** returned by the server into `sources/<provider>.<TIMESTAMP>.json` (e.g., `sources/igdb.2026-08-16T11-17-39Z.json`).
 
-- **Pristine Raw Payloads:** The JSON file content inside `_sources/` is never modified or wrapped, preserving original server response integrity.
+- **Pristine Raw Payloads:** The JSON file content inside `sources/` is never modified or wrapped, preserving original server response integrity.
 - **Cross-Platform Timestamp Filename:** The timestamp includes date, hours, minutes, seconds, and UTC timezone indicator (`Z`), with colons replaced by dashes (e.g., `2026-08-16T11-17-39Z`) for full Windows/Linux filesystem compatibility.
 
-- **Offline Re-parsing:** If Orbit updates its parser to extract additional fields in the future, it re-parses local `_sources/` files instantly without making network requests.
+- **Offline Re-parsing:** If Orbit updates its parser to extract additional fields in the future, it re-parses local `sources/` files instantly without making network requests.
 - **API Rate-Limit Protection:** Avoids duplicate HTTP requests during batch metadata updates.
 
 ### 4.2 Configuration Toggle (`keep_raw_sources`)
@@ -147,9 +148,10 @@ When Orbit fetches data from external APIs (IGDB, Steam, SteamGridDB), it saves 
 In `orbit.config.toml`:
 
 ```toml
-# Save raw scraper API JSON responses in Metadata/<platform>/<game>/_sources/
+# Save raw scraper API JSON responses in Metadata/<platform>/<game>/sources/
 keep_raw_sources = true
 ```
 
 Setting `keep_raw_sources = false` instructs Orbit to discard raw API payloads after generating `metadata.toml`, keeping the directory strictly minimal.
+
 

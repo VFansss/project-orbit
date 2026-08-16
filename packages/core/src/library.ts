@@ -118,8 +118,8 @@ export class LibraryService {
    * Persists a Game object's metadata to the central Metadata folder.
    */
   async saveMetadata(game: Game): Promise<string> {
-    if (game.platform === 'unknown') {
-      throw new Error(`Cannot save metadata for unknown platform: ${game.name}`);
+    if (!game.platform || game.platform === 'unknown') {
+      throw new Error(`Cannot save metadata for unknown or unspecified platform: "${game.name}". Please specify a valid platform.`);
     }
 
     const metaPath = this.paths.getMetadataPath(game.platform, game.name, game.metadata.general.release_year);
@@ -129,9 +129,30 @@ export class LibraryService {
     await mkdir(metaPath.absolute, { recursive: true });
     await writeFile(metaPath.file, content);
 
+    // Save sources/ if raw sources are attached and keep_raw_sources is enabled
+    const shouldKeepRaw = this.config.keep_raw_sources !== false;
+    if (shouldKeepRaw && game._rawSources) {
+      const sourcesDir = join(metaPath.absolute, 'sources');
+      await mkdir(sourcesDir, { recursive: true });
+
+
+      // Full timestamp with ISO timezone (colons replaced with dashes for cross-platform filesystem safety)
+      const timestampStr = new Date().toISOString().replace(/:/g, '-').replace(/\.\d{3}/, ''); // e.g. 2026-08-16T11-17-39Z
+      for (const [provider, payload] of Object.entries(game._rawSources)) {
+        if (payload) {
+          const rawFilePath = join(sourcesDir, `${provider}.${timestampStr}.json`);
+          await writeFile(rawFilePath, JSON.stringify(payload, null, 2));
+          Logger.info(`Raw source payload saved at ${rawFilePath}`);
+        }
+      }
+    }
+
+
     Logger.info(`Metadata saved for ${game.name} [${game.platform}] at ${metaPath.relative}`);
     return metaPath.file;
   }
+
+
 
 
   /**

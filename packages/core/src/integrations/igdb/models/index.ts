@@ -19,4 +19,9 @@ export interface IGDBGame {
     publisher: boolean;
     company: { id: number; name: string };
   }>;
+  franchise?: { id: number; name: string };
+  franchises?: Array<{ id: number; name: string }>;
+  collection?: { id: number; name: string };
+  collections?: Array<{ id: number; name: string }>;
 }
+

@@ -29,8 +29,9 @@ export class PathService {
    * Calculates paths for a game result.
    */
   getGamePaths(platform: string, folderName: string, year?: string | number) {
+    const plat = platform || 'unknown';
     const safeName = PathService.getSafeFolderName(folderName, year);
-    const relativePath = join('Games', platform, safeName);
+    const relativePath = join('Games', plat, safeName);
     const absolutePath = join(this.getLibraryPath(), relativePath);
     
     return {
@@ -43,8 +44,9 @@ export class PathService {
    * Returns the central metadata path for a game.
    */
   getMetadataPath(platform: string, folderName: string, year?: string | number) {
+    const plat = platform || 'unknown';
     const safeName = PathService.getSafeFolderName(folderName, year);
-    const relativePath = join('Metadata', platform, safeName);
+    const relativePath = join('Metadata', plat, safeName);
     const absolutePath = join(this.getLibraryPath(), relativePath);
     
     return {
@@ -53,4 +55,5 @@ export class PathService {
       file: join(absolutePath, 'metadata.toml')
     };
   }
+
 }

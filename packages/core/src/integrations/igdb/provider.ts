@@ -36,14 +36,17 @@ export class IGDBProvider implements MetadataProvider {
       if (igdbResults.length === 0) return game;
 
       // For now, we take the first result to enrich the context
-      const enrichedGame = mapIGDBToGame(igdbResults[0]);
+      const rawPayload = igdbResults[0];
+      const enrichedGame = mapIGDBToGame(rawPayload);
       
       return {
         ...game,
         name: enrichedGame.name || game.name,
         ids: { ...game.ids, ...enrichedGame.ids },
-        metadata: { ...game.metadata, ...enrichedGame.metadata }
+        metadata: { ...game.metadata, ...enrichedGame.metadata },
+        _rawSources: { ...(game._rawSources || {}), igdb: rawPayload }
       };
+
     } catch (e) {
       return game;
     }

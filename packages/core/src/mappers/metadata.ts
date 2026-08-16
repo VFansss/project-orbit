@@ -59,10 +59,19 @@ export function mapMetadataToGame(metadata: any, platform: string, folderName: s
       genres: toArray(metadata.general?.genres).map(String),
       developers: toArray(metadata.general?.developers).map(String),
       publishers: toArray(metadata.general?.publishers).map(String),
+      franchise: metadata.general?.franchise ? String(metadata.general.franchise) : undefined,
+      series: metadata.general?.series ? String(metadata.general.series) : undefined,
     },
     ids: metadata.ids || {},
+    relations: {
+      same_game_as: toArray(metadata.relations?.same_game_as).map(String),
+      remake_of: toArray(metadata.relations?.remake_of).map(String),
+      included_in: toArray(metadata.relations?.included_in).map(String),
+    },
     sources: toArray(metadata.sources || metadata.source)
   };
+
+
 
   return {
     name: cleanMetadata.general.name,

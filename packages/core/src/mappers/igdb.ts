@@ -55,6 +55,10 @@ export function mapIGDBToGame(igdbGame: IGDBGame): Game {
     }
   }
 
+  // Extract franchise and series
+  const franchise = igdbGame.franchise?.name || igdbGame.franchises?.[0]?.name;
+  const series = igdbGame.collection?.name || igdbGame.collections?.[0]?.name;
+
   const metadata: GameMetadata = {
     general: {
       name: igdbGame.name,
@@ -66,12 +70,20 @@ export function mapIGDBToGame(igdbGame: IGDBGame): Game {
       genres,
       developers,
       publishers,
+      franchise,
+      series,
     },
     ids,
     sources: [
-      { name: 'IGDB', url: igdbGame.url }
+      { 
+        name: 'IGDB', 
+        url: igdbGame.url,
+        fetched_at: new Date().toISOString()
+      }
     ]
   };
+
+
 
   return {
     name: igdbGame.name,

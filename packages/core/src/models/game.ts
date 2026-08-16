@@ -24,13 +24,24 @@ export const GameMetadataSchema = z.object({
     genres: z.array(z.string()).default([]),
     developers: z.array(z.string()).default([]),
     publishers: z.array(z.string()).default([]),
+    franchise: z.string().optional(),
+    series: z.string().optional(),
   }).default({ name: 'Unknown' }),
   ids: z.record(z.string()).default({}),
+  relations: z.object({
+    same_game_as: z.array(z.string()).default([]),
+    remake_of: z.array(z.string()).default([]),
+    included_in: z.array(z.string()).default([]),
+  }).optional().default({}),
+
   sources: z.array(z.object({
     name: z.string(),
     url: z.string().optional(),
+    fetched_at: z.string().optional(),
   })).default([]),
 }).catchall(z.any());
+
+
 
 export type GameMetadata = z.infer<typeof GameMetadataSchema>;
 
@@ -42,8 +53,10 @@ export interface Game {
   platform: string;
   ids: GameIds;
   metadata: GameMetadata;
+  _rawSources?: Record<string, any>;
   
   // Optional filesystem information
+
   paths?: {
     absolute: string;       // Absolute path to game folder
     relative: string;       // Path relative to library root (e.g. Games/pc/XCOM 2)
