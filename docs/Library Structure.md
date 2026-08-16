@@ -147,25 +147,10 @@ Each gamefolder COULD have one of these subfolders
 
 ##### checksum
 
-This folder will contain checksum of files related to the game itself
+This folder contains checksum files for assets within the game directory. 
 
-3 algorithm are officially supported:
+For full specifications on supported algorithms, naming conventions (`filename.<algorithm>`, `content.checksum.<algorithm>`, `.original.`), location rules, and caching, see the dedicated [Hashing Documentation](./Hashing.md).
 
-- CRC32
-- MD5
-- SHA1 base16
-- SHA256
-
-Each file that contains checksum made with a certain algorithm will have the relative extension e.g. checksum.**md5**, checksum.**sha1**
-
-- the checksum of the content of the whole game folder files is called "set.checksum.**algorithm**"
-- the checksum of a single certain file is simply called "filename.**algorithm**"
-
-If the content of the game folder has been converted from another format e.g. rom or iso conversion, a copy of the checksum of the file BEFORE conversion will be retained in the following format:
-
-- "filename.original.**algorithm**"
-
-".original." will be the "marker" of a checksum of "filename" in the related "algorithm" BEFORE conversion
 
 ## UserData
 
