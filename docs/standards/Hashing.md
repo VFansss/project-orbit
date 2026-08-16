@@ -1,14 +1,18 @@
-# Hashing
+# Hashing Standard
 
-- [Hashing](#hashing)
+- [Hashing Standard](#hashing-standard)
   - [1. Core Philosophy](#1-core-philosophy)
   - [2. Supported Algorithms](#2-supported-algorithms)
   - [3. File System Storage Standards (`checksum/`)](#3-file-system-storage-standards-checksum)
     - [3.1 Checksum File Naming Conventions](#31-checksum-file-naming-conventions)
-    - [3.2 Content Format](#32-content-format)
-    - [3.3 Location & Resolution Rules (Official vs Fallback)](#33-location--resolution-rules-official-vs-fallback)
+    - [3.2 Content Format \& Letter Casing](#32-content-format--letter-casing)
+    - [3.3 Location \& Resolution Rules (Official vs Fallback)](#33-location--resolution-rules-official-vs-fallback)
+    - [3.4 Cross-Platform Filename Sanitization](#34-cross-platform-filename-sanitization)
   - [4. Compressed Archives (ZIP, 7z)](#4-compressed-archives-zip-7z)
-  - [5. Performance, Caching & Invalidation](#5-performance-caching--invalidation)
+  - [5. Performance, Caching \& Computation Strategy](#5-performance-caching--computation-strategy)
+    - [5.1 Size-Based Computation Strategy](#51-size-based-computation-strategy)
+    - [5.2 On-Demand (Lazy) Computation Policy](#52-on-demand-lazy-computation-policy)
+    - [5.3 Caching \& Invalidation](#53-caching--invalidation)
 
 ---
 
@@ -53,9 +57,6 @@ Checksum files adopt the following naming patterns:
   - `checksum/original.Track 1.bin.sha1` (retains the SHA1 of an individual track in a multi-file CUE/BIN dump prior to CHD conversion).  
   *(Prepending `original.` keeps pre-conversion checksum files neatly grouped together in alphabetical directory listings).*
 
-
-
-
 ### 3.2 Content Format & Letter Casing
 
 A checksum file contains **only** the raw hex string of the calculated hash, adhering to the following casing rules:
@@ -65,7 +66,6 @@ A checksum file contains **only** the raw hex string of the calculated hash, adh
 
 **Comparison Policy (Case-Insensitive):**  
 When reading checksum files or matching hashes against external databases, Orbit **always** performs case-insensitive comparisons (normalizing strings via `.toLowerCase()`) to prevent mismatch errors caused by third-party tools.
-
 
 ### 3.3 Location & Resolution Rules (Official vs Fallback)
 
@@ -108,5 +108,3 @@ Computing hashes is **on-demand (lazy)**. Orbit does not force hash calculations
 
 - **Cache-First Reading:** Before starting hash calculations for large binaries (e.g., multi-gigabyte ISOs), Orbit checks if a valid checksum file already exists in `checksum/`.
 - **Cache Invalidation:** If a target file's size (`size`) or modification timestamp (`mtime`) changes, existing cached checksums are marked invalid and recalculated.
-
-

@@ -3,19 +3,10 @@
 - [Library Structure](#library-structure)
   - [orbit.library.toml](#orbitlibrarytoml)
   - [Metadata](#metadata)
-    - [Game Folders - in Metadata](#game-folders---in-metadata)
-      - [metadata.toml](#metadatatoml)
-      - [media](#media)
   - [Games](#games)
     - [Platform Folders - in Games](#platform-folders---in-games)
       - [Game Folders - in Games](#game-folders---in-games)
-        - [checksum](#checksum)
   - [UserData](#userdata)
-    - [Profile folders](#profile-folders)
-      - [Screenshots](#screenshots)
-        - [Platform Folders - in Screenshots](#platform-folders---in-screenshots)
-          - [Game Folders - in Screenshots](#game-folders---in-screenshots)
-      - [Savedata](#savedata)
   - [Example and details](#example-and-details)
     - [Game Folders - naming convention](#game-folders---naming-convention)
 
@@ -64,9 +55,9 @@ created_at = 2026-04-23T19:32:42.188Z
 
 ## Metadata
 
-This folder is the "Brain" of the library. It stores all persistent information about games that is shared across all users (`metadata.toml` and optional raw `_sources/` cache).
+This folder is the "Brain" of the library. It stores all persistent information about games that is shared across all users (`metadata.toml` and optional raw `sources/` cache).
 
-For full details on the TOML schema, `[general]`, `[ids]`, `[relations]`, `[[sources]]`, and raw payload caching, see the dedicated [Metadata Documentation](./Metadata.md).
+For full details on the TOML schema, `[general]`, `[ids]`, `[relations]`, `[[sources]]`, and raw payload caching, see the dedicated [Metadata Documentation](./orbit-library/Metadata.md).
 
 
 ## Games
@@ -88,85 +79,18 @@ Each gamefolder COULD have one of these subfolders
 
 - `checksum`
   - Will contain files used to calculate EVERY files inside the main game folder, with certain exceptions
-  - More details [in the separate section](#checksum)
+  - For full specifications on supported algorithms, naming conventions (`filename.<algorithm>`, `content.checksum.<algorithm>`, `.original.`), location rules, and caching, see the dedicated [Hashing Standard](./standards/Hashing.md).
 - `"game edition"`
-  - Each subfolder with a name not present above will be treated as a "sub-edition" of the game
-  - These kind of subfolders are, in fact, game folders
-  - This is not recursive: if a "game edition" folder have inner subfolders with a name not present above, they will be ignored/treated accordingly
-
-##### checksum
-
-This folder contains checksum files for assets within the game directory. 
-
-For full specifications on supported algorithms, naming conventions (`filename.<algorithm>`, `content.checksum.<algorithm>`, `.original.`), location rules, and caching, see the dedicated [Hashing Documentation](./Hashing.md).
+  - Each subfolder with a name not present above will be treated as a "sub-edition" of the game.
 
 
 ## UserData
 
-Each folder here will contain data related to an user.
+Contains user-specific profile data (`Screenshots/`, `Clips/`, `Savedata/`).
 
-### Profile folders
+For full specifications on profile folders, screenshot naming conventions, tag stacking, and savegames, see the dedicated [UserData Documentation](./orbit-library/UserData.md).
 
-Each user can be a local user, without a domain e.g. "alex" or contain a domain e.g. `alex@gmail.com` or `alex@mydomain.com`
 
-**Content:**
-
-Each gamefolder COULD have one of these subfolders
-
-- `Screenshots`
-  - will contain screenshots made by the user
-  - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
-    - e.g. ps1, pc, xbox
-    - within, each subfolder will be a [game folder](#game-folders---in-screenshots)
-- `Savedata`
-  - Will contain savegames made by the user
-  - Each subfolder will be named as one of [supported platform list](./Supported Platform List.md) entry
-    - e.g. ps1, pc, xbox
-    - within, each subfolder will be a [game folder](#game-folders---naming-convention)
-
-#### Screenshots
-
-##### Platform Folders - in Screenshots
-
-###### Game Folders - in Screenshots
-
-**Naming:**
-
-More details [in the separate section](#game-folders---naming-convention)
-
-**Content:**
-
-Will contain screenshots made by an user regarding a certain game.
-
-Files follow a sortable, human-readable and extensible format:
-`YYYY-MM-DD HH-mm-ss[_OPTIONAL_INDEX] [- DESCRIPTION] [(TAG 1)] [(TAG 2)] ... [(ORIGINAL_NAME)].extension`
-
-- **Timestamp** (YYYY-MM-DD HH-mm-ss): The exact date and time when the screenshot was taken. Mandatory.
-- **Index** ([_OPTIONAL_INDEX]): An optional 1-based numeric suffix (e.g., _1) added only to prevent collisions if multiple screenshots are taken within the same second.
-- **Description** ([- DESCRIPTION]): An optional descriptive tag (e.g., Boss-Fight). If present, it must be preceded by a dash with spaces ` - `.
-- **Tags/Attributes** ([(TAG)]): Any extra information (e.g., Hud Removed, 4K) is wrapped in parentheses. Multiple tags are supported and stacked.
-- **Original Name** ([(ORIGINAL_NAME)]): If the original filename is preserved, it MUST be the **last** set of parentheses before the extension.
-  - The extension is removed from the original name if it's the same as the final file.
-
-**Content:**
-
-- `media files`: The processed or main screenshots.
-- `Original/`: An optional subfolder containing the untouched source files if any retouching or processing (e.g., HUD removal) was performed.
-
-Examples:
-
-- **Bare Minimum:** `2026-04-24 19-30-15.png`
-- **Collision Handling:** `2026-04-24 19-30-15_1.png`
-- **With Description:** `2026-04-24 19-30-15 - Final Boss.png`
-- **With Description & Tags:** `2026-04-24 19-30-15 - Final Boss (Hud Removed).png`
-- **With Original Name (No Description):** `2026-04-24 19-30-15 (Alpha Protocol 11_02_2024 13_34_23).png`
-- **Complete Stack (Desc + Tag + Original):** `2026-04-24 19-30-15 - Final Boss (Hud Removed) (Alpha Protocol 11_02_2024 13_34_23).png`
-
-No separate metadata files are planned for screenshots; the filename is the database.
-
-#### Savedata
-
-TODO:
 
 ## Example and details
 
