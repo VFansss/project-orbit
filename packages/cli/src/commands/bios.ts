@@ -1,10 +1,8 @@
 import type { CAC } from 'cac';
 import * as p from '@clack/prompts';
-import { Orbit, BiosService, type IDataGateway } from '@orbit/core';
+import { Orbit, BiosService, ResourceManager, type IDataGateway } from '@orbit/core';
 import { loadConfig } from '../storage';
 import { resolvePath, getSuggestedPath } from '../paths';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 export default function registerBios(cli: CAC, gateway: IDataGateway) {
   cli.command('bios [action] [path]', 'Manage system BIOS and firmware (import, verify)')
@@ -46,6 +44,15 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
       }
 
       if (targetAction === 'import' || targetAction === 'parse') {
+        // --- PREFLIGHT: ensure required DAT resource is available BEFORE scanning ---
+        try {
+          const resourceManager = new ResourceManager(config, gateway);
+          await resourceManager.fetchResource('libretro-system-bios');
+        } catch (err: any) {
+          p.log.error(err.message);
+          process.exit(1);
+        }
+
         let targetPath = path;
 
         if (!targetPath) {

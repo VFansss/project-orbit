@@ -24,8 +24,15 @@ export const LIBRETRO_SYSTEM_BIOS_DEFINITION: OrbitResourceDefinition = {
 export class LibretroSystemBiosResourceHandler implements OrbitResourceHandler {
   public readonly definition = LIBRETRO_SYSTEM_BIOS_DEFINITION;
   private entriesCache: BiosReferenceEntry[] | null = null;
+  private localResourceDir?: string;
 
-  constructor(private localResourceDir: string) {}
+  constructor(localResourceDir?: string) {
+    this.localResourceDir = localResourceDir;
+  }
+
+  public initialize(manager: any, def: OrbitResourceDefinition) {
+    this.localResourceDir = manager.getResourceDir(def.id, def.version);
+  }
 
   /**
    * Reads and parses System.dat from local AppData resource directory.
