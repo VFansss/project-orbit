@@ -1,8 +1,9 @@
 import type { CAC } from 'cac'
 import * as p from '@clack/prompts'
+import { calculateFileHashes, type HashAlgorithm } from '@orbit/core'
 import { resolvePath } from '../paths'
 import { access } from 'node:fs/promises'
-import { calculateFileHashes, type HashAlgorithm } from '../utils/hashing'
+
 
 /**
  * Hash calculation command.

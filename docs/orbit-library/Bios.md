@@ -18,21 +18,20 @@ BIOS and system firmware files are required by many emulation cores (e.g., PS1, 
 
 ---
 
-## 2. File System Storage Standards
-
-BIOS files are stored in a dedicated `_bios/` subfolder inside the target platform directory in `Games/`:
+BIOS files are stored in a dedicated top-level `Bios/<platform>/` master folder in the library root:
 
 ```text
-Games/<platform>/_bios/
+Bios/<platform>/
 ├── scph1001.bin           # BIOS binary file
 └── checksum/              # Checksum folder following standard Hashing rules
     ├── scph1001.bin.md5
     └── scph1001.bin.sha1
 ```
 
-- **Folder Path:** `Games/<platform>/_bios/`
+- **Folder Path:** `Bios/<platform>/`
 - **Naming:** Filenames match standard emulator requirements (e.g., `scph1001.bin`, `neogeo.zip`).
 - **Checksums:** Follow the global [Hashing Standard](../standards/Hashing.md) inside `checksum/`.
+
 
 ---
 

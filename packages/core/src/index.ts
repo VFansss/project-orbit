@@ -24,7 +24,11 @@ export * from './resources/manager';
 export * from './resources/definitions/bios';
 export * from './resources/parsers/clrmamepro';
 export * from './system';
+export * from './utils/hashing';
+export * from './services/bios';
 export const version = "0.1.0";
+
+
 
 
 

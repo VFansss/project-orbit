@@ -10,10 +10,10 @@
 - [x] Hashing & checksum standard (`Hashing.md`, `checksum/`, size-based heuristics)
 - [x] Online metadata scraping & raw payload caching (`IGDB`, `sources/*.json`, `fetched_at`)
 - [x] **Orbit External Resources Subsystem**: Resource definitions (`libretro-system-bios`), AppData storage, tag filtering, version manifest, `orbit resource list`, `orbit resource update`.
-- [ ] **`orbit bios` Command Suite**
+- [x] **`orbit bios` Command Suite**
+  - [x] `orbit bios import <path>` (calculate hashes, match DATs, store in `Bios/<platform>/`)
+  - [x] `orbit bios verify [platform]` (check firmware presence and binary integrity)
 
-  - [ ] `orbit bios import <path>` (calculate hashes, match DATs, store in `Games/<platform>/_bios/`)
-  - [ ] `orbit bios verify [platform]` (check firmware presence and binary integrity)
 - [ ] **Offline Hash Index (Hasheous / DAT Lookup)**
   - [ ] Local sqlite/json lookup for `hash -> Game Name / IDs`
 - [ ] **`orbit game import` Command Suite**

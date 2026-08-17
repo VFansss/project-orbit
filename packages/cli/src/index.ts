@@ -13,8 +13,10 @@ import registerSearch from './commands/search'
 import registerStaging from './commands/staging'
 import registerHash from './commands/hash'
 import registerResource from './commands/resource'
+import registerBios from './commands/bios'
 
 const cli = cac('orbit')
+
 
 
 export const gateway = new LocalNodeGateway();
@@ -59,6 +61,7 @@ async function main() {
     registerStaging(cli)
     registerHash(cli)
     registerResource(cli)
+    registerBios(cli)
 
     cli.help((sections) => {
       const cmdsIndex = sections.findIndex(s => s.title === 'Commands')
@@ -70,7 +73,8 @@ async function main() {
         const setup = getCmds(['login', 'library', 'config'])
         const myLibrary = getCmds(['status', 'search'])
         const myMedia = getCmds(['screenshot', 'clip'])
-        const maintenance = getCmds(['staging', 'hash', 'resource'])
+        const maintenance = getCmds(['staging', 'hash', 'resource', 'bios'])
+
 
         sections.splice(cmdsIndex, 1,
           { title: '\x1b[35mSetup\x1b[0m', body: setup },
