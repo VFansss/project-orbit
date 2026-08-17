@@ -10,7 +10,9 @@ import { join } from 'node:path';
 export default function registerBios(cli: CAC) {
   cli.command('bios [action] [path]', 'Manage system BIOS and firmware (import, verify)')
     .option('--copy', 'Copy files instead of moving them', { default: false })
+    .option('--force', 'Force overwrite existing BIOS files', { default: false })
     .option('--platform <platform>', 'Specify or fallback platform name')
+
     .action(async (rawAction?: any, rawPath?: any, flags?: any) => {
       // Requirements Check
       const auth = Orbit.checkScopes(['USER_LOGGED']);
@@ -63,8 +65,10 @@ export default function registerBios(cli: CAC) {
         try {
           const results = await biosService.importBios(absolutePath, {
             copy: options.copy,
+            force: options.force,
             platformFallback: options.platform
           });
+
 
           s.stop(`Import finished. Processed ${results.length} file(s).`);
 
@@ -74,17 +78,39 @@ export default function registerBios(cli: CAC) {
           }
 
           console.log('\n\x1b[34m--- Imported BIOS Summary ---\x1b[0m\n');
-          for (const res of results) {
-            const statusStr = res.identified 
-              ? `\x1b[32m[Identified: ${res.matchedEntry?.description || res.filename}]\x1b[0m` 
-              : `\x1b[33m[Unknown Firmware]\x1b[0m`;
+          const ignoredList: string[] = [];
 
-            console.log(`\x1b[1m${res.filename}\x1b[0m ➡️ Bios/\x1b[36m${res.platform}\x1b[0m/ ${statusStr}`);
-            console.log(`  SHA1: ${res.sha1}`);
-            console.log(`  MD5:  ${res.md5}`);
+          for (const res of results) {
+            if (res.actionTaken === 'imported') {
+              console.log(`\x1b[32m[Imported]\x1b[0m \x1b[1m${res.filename}\x1b[0m ➡️ Bios/\x1b[36m${res.platform}\x1b[0m/`);
+              console.log(`  Description: ${res.matchedEntry?.description || res.filename}`);
+              console.log(`  SHA1: ${res.sha1}`);
+              console.log('');
+            } else if (res.actionTaken === 'skipped_already_exists') {
+              console.log(`\x1b[36m[Skipped - Already Exists]\x1b[0m \x1b[1m${res.filename}\x1b[0m in Bios/\x1b[36m${res.platform}\x1b[0m/`);
+              console.log(`  SHA1: ${res.sha1}`);
+              console.log('');
+            } else if (res.actionTaken === 'staged_unsupported') {
+              console.log(`\x1b[33m[ALERT - Platform Not Curated]\x1b[0m \x1b[1m${res.filename}\x1b[0m ➡️ _staging/bios/`);
+              console.log(`  Matched Platform: \x1b[36m${res.platform}\x1b[0m (Not currently curated in Orbit)`);
+              console.log(`  SHA1: ${res.sha1}`);
+              console.log('');
+            } else if (res.actionTaken === 'ignored_unidentified') {
+              ignoredList.push(res.sourcePath);
+            }
+          }
+
+          if (ignoredList.length > 0) {
+            console.log(`\x1b[33m[Notice] Ignored ${ignoredList.length} Unrecognized File(s) (Left Untouched at Source):\x1b[0m`);
+            for (const path of ignoredList) {
+              console.log(`  - ${path}`);
+            }
             console.log('');
           }
-          console.log('\x1b[32mSuccess!\x1b[0m Firmware imported and checksums written.');
+
+          console.log('\x1b[32mSuccess!\x1b[0m BIOS import processing complete.');
+
+
         } catch (err: any) {
           s.stop('Import failed.', 1);
           console.error(`\x1b[31mError:\x1b[0m ${err.message}`);
