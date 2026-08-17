@@ -31,12 +31,15 @@ export interface BiosVerifyReport {
   foundSha1?: string;
 }
 
+import type { IDataGateway } from '../gateway/types';
+
 export class BiosService {
   private resourceManager: ResourceManager;
 
-  constructor(private config: OrbitConfig) {
-    this.resourceManager = new ResourceManager(config);
+  constructor(private config: OrbitConfig, gateway?: IDataGateway) {
+    this.resourceManager = new ResourceManager(config, gateway);
   }
+
 
   private getLibraryRoot(): string {
     const root = this.config.currentLibraryPath;

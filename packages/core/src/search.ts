@@ -131,9 +131,10 @@ export async function performSearch(gateway: IDataGateway, options: SearchOption
 
           return a.name.length - b.name.length;
         });
-      } catch (e) {
-        Logger.error(`Remote search failed. Try --offline mode.`);
+      } catch (e: any) {
+        Logger.error(`Remote search failed: ${e.message}`);
       }
+
     }
   }
 

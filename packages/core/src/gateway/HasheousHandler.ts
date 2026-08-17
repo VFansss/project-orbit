@@ -1,9 +1,12 @@
-import type { GatewayHandler, DataRequest } from './types';
+import type { GatewayHandler, DataRequest, IDataGateway } from './types';
 
 export class HasheousHandler implements GatewayHandler {
   labels = ['remote', 'api', 'hasheous'];
 
-  constructor(private apiKey?: string) {}
+  constructor(
+    private apiKey: string | undefined,
+    private gateway: IDataGateway
+  ) {}
 
   async handle(req: DataRequest): Promise<any> {
     const endpoint = req.uri.replace(/^hasheous:\/\//, '');
@@ -22,16 +25,12 @@ export class HasheousHandler implements GatewayHandler {
       headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(`https://hasheous.org/${endpoint}`, {
+    const response: Response = await this.gateway.handle({
+      uri: `https://hasheous.org/${endpoint}`,
       method: req.method || 'GET',
       headers,
       body: req.body ? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body)) : undefined,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Hasheous API request failed: ${errorText}`);
-    }
 
     return await response.json();
   }

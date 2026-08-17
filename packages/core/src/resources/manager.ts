@@ -1,54 +1,54 @@
 import { join } from 'node:path';
+import { mkdir, readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { mkdir, readFile, writeFile, stat, rm } from 'node:fs/promises';
-
-import { parse as parseToml } from 'smol-toml';
-import type { 
-  OrbitResourceDefinition, 
-  OrbitResourceManifest, 
-  OrbitResourceStatus 
-} from './types';
-import { biosResources, LibretroSystemBiosResourceHandler } from './definitions/bios';
-import { Logger } from '../logger';
 import type { OrbitConfig } from '../models/config';
+import type { OrbitResourceDefinition, OrbitResourceStatus, OrbitResourceManifest } from './types';
+import { LibretroSystemBiosResourceHandler } from './definitions/libretro-system-bios';
+import { Logger } from '../logger';
+import { version } from '../index';
 import type { IDataGateway } from '../gateway/types';
+import { LocalNodeGateway } from '../gateway/LocalNodeGateway';
 
 export class ResourceManager {
   private definitions: Map<string, OrbitResourceDefinition> = new Map();
+  private handlers: Map<string, any> = new Map();
+  private gateway: IDataGateway;
 
-  constructor(private config: OrbitConfig, private gateway?: IDataGateway) {
-    this.registerDefinitions(biosResources);
+  constructor(private config: OrbitConfig, gateway?: IDataGateway) {
+    this.gateway = gateway || new LocalNodeGateway();
+    this.registerBuiltinResources();
   }
 
   /**
-   * Instantiates and retrieves the handler for a specific resource ID.
+   * Registers default internal resource definitions (DAT files, indexes, schemas).
    */
-  public getHandler<T = any>(id: string): T | null {
-    const def = this.definitions.get(id);
-    if (!def) return null;
-
-    const resourceDir = this.getResourceDir(id, def.version || 'latest');
-
-    if (id === 'libretro-system-bios') {
-      return new LibretroSystemBiosResourceHandler(resourceDir) as unknown as T;
-    }
-
-    return null;
+  private registerBuiltinResources() {
+    this.registerResource({
+      id: 'libretro-system-bios',
+      name: 'Libretro System BIOS DAT',
+      description: 'Official Libretro / RetroArch System BIOS DAT containing SHA1, MD5, and CRC32 checksums for firmware identification',
+      url: 'https://raw.githubusercontent.com/libretro/libretro-database/master/dat/System.dat',
+      format: 'clrmamepro',
+      version: 'latest',
+      license: 'CC-BY-SA 4.0',
+      licenseUrl: 'https://github.com/libretro/libretro-database/blob/master/LICENSE',
+      tags: ['#bios', '#firmware', '#libretro', '#dat']
+    }, new LibretroSystemBiosResourceHandler());
   }
 
-
-
   /**
-   * Register a batch of resource definitions.
+   * Registers a new resource definition and optional handler.
    */
-  public registerDefinitions(defs: OrbitResourceDefinition[]): void {
-    for (const def of defs) {
-      this.definitions.set(def.id, def);
+  public registerResource(def: OrbitResourceDefinition, handler?: any) {
+    this.definitions.set(def.id, def);
+    if (handler) {
+      this.handlers.set(def.id, handler);
+      handler.initialize?.(this, def);
     }
   }
 
   /**
-   * Resolves the root AppData directory for Orbit resources.
+   * Gets root path for storing downloaded Orbit resources.
    */
   public getResourcesRootDir(): string {
     const baseDir = process.env.APPDATA 
@@ -60,8 +60,8 @@ export class ResourceManager {
   /**
    * Resolves local storage directory for a specific resource version.
    */
-  public getResourceDir(resourceId: string, version?: string): string {
-    const versionSubdir = version || 'latest';
+  public getResourceDir(resourceId: string, versionId?: string): string {
+    const versionSubdir = versionId || 'latest';
     return join(this.getResourcesRootDir(), resourceId, versionSubdir);
   }
 
@@ -80,15 +80,22 @@ export class ResourceManager {
     let manifest: OrbitResourceManifest | null = null;
 
     try {
-      const file = Bun.file(manifestPath);
-      if (await file.exists()) {
-        manifest = await file.json();
+      const manifestFile = Bun.file(manifestPath);
+      if (await manifestFile.exists()) {
+        manifest = await manifestFile.json();
         downloaded = true;
+      } else {
+        // Fallback: Check if payload file exists on disk even if manifest is missing
+        const urlParts = def.url.split('/');
+        const fileName = urlParts[urlParts.length - 1] || 'resource.data';
+        const payloadFile = Bun.file(join(resourceDir, fileName));
+        if (await payloadFile.exists()) {
+          downloaded = true;
+        }
       }
     } catch {
       downloaded = false;
     }
-
 
     return {
       definition: def,
@@ -125,7 +132,6 @@ export class ResourceManager {
     return list;
   }
 
-
   /**
    * Fetches/updates a resource via HTTP gateway if not downloaded or if forced.
    */
@@ -141,7 +147,7 @@ export class ResourceManager {
     const resourceDir = this.getResourceDir(id, versionSubdir);
     const status = await this.getStatus(id);
 
-    // If resource is already downloaded and force is false, return current status
+    // If resource is already downloaded and force is false, return current status silently
     if (status?.downloaded && !force) {
       Logger.debug(`Resource: ${def.name}`);
       Logger.debug(`License: ${def.license} (${def.licenseUrl})`);
@@ -151,68 +157,65 @@ export class ResourceManager {
       return status;
     }
 
-    Logger.debug(`Downloading resource "${def.name}"...`);
-    Logger.debug(`Source: ${def.url}`);
-    Logger.debug(`License: ${def.license} (${def.licenseUrl})`);
-
-
-    await mkdir(resourceDir, { recursive: true });
-
-    // Download payload via HTTP fetch
-    const response = await fetch(def.url);
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status} when downloading resource from ${def.url}`);
-    }
-
-    const etag = response.headers.get('etag') || undefined;
-    const lastModified = response.headers.get('last-modified') || undefined;
-
-    const rawData = await response.text();
-    
-    // Extract filename from URL (e.g. System.dat)
     const urlParts = def.url.split('/');
     const fileName = urlParts[urlParts.length - 1] || 'resource.data';
     const filePath = join(resourceDir, fileName);
+    const payloadFile = Bun.file(filePath);
 
-    await Bun.write(filePath, rawData);
+    // Prominent INFO notification when required resource is missing or being downloaded
+    Logger.info(`Downloading required system resource "${def.name}"...`);
+    Logger.info(`Source URL: ${def.url}`);
+    Logger.info(`License: ${def.license} (${def.licenseUrl})`);
 
-    const manifest: OrbitResourceManifest = {
-      id: def.id,
-      version: versionSubdir,
-      downloadedAt: new Date().toISOString(),
-      etag,
-      lastModified
-    };
+    await mkdir(resourceDir, { recursive: true });
 
-    await Bun.write(join(resourceDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+    try {
+      // Route request through IDataGateway (HttpHandler choke-point)
+      const response: Response = await this.gateway.handle({
+        uri: def.url,
+        method: 'GET'
+      });
 
+      const etag = response.headers.get('etag') || undefined;
+      const lastModified = response.headers.get('last-modified') || undefined;
+      const rawData = await response.text();
 
-    Logger.info(`Resource saved successfully at ${resourceDir}`);
+      await Bun.write(filePath, rawData);
+
+      const manifest: OrbitResourceManifest = {
+        id: def.id,
+        version: versionSubdir,
+        downloadedAt: new Date().toISOString(),
+        etag,
+        lastModified
+      };
+
+      await Bun.write(join(resourceDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+      Logger.info(`[✓] Successfully downloaded and cached "${def.name}".`);
+    } catch (err: any) {
+      // If error occurs during fetch (network error, rate limit 429) and file does NOT exist, EXPLODE immediately!
+      if (!(await payloadFile.exists())) {
+        throw new Error(`CRITICAL: Failed to download required resource "${def.name}": ${err.message}`);
+      }
+      Logger.warn(`Fetch error: ${err.message}. Falling back to cached local file at ${filePath}`);
+      return {
+        definition: def,
+        downloaded: true,
+        localPath: resourceDir
+      };
+    }
 
     return {
       definition: def,
       downloaded: true,
-      localPath: resourceDir,
-      manifest
+      localPath: resourceDir
     };
   }
 
   /**
-   * Purges / deletes local downloaded resource files from disk.
+   * Retrieves specific registered resource handler instance.
    */
-  public async purgeResource(id?: string): Promise<string[]> {
-    const purgedIds: string[] = [];
-    if (id) {
-      const def = this.definitions.get(id);
-      const targetDir = join(this.getResourcesRootDir(), id);
-      await rm(targetDir, { recursive: true, force: true });
-      purgedIds.push(id);
-      Logger.info(`Purged local resource "${def?.name || id}" at ${targetDir}`);
-    } else {
-      const rootDir = this.getResourcesRootDir();
-      await rm(rootDir, { recursive: true, force: true });
-      Logger.info(`Purged all local external resources at ${rootDir}`);
-    }
-    return purgedIds;
+  public getHandler<T = any>(id: string): T | undefined {
+    return this.handlers.get(id);
   }
 }

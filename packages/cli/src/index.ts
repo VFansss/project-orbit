@@ -31,9 +31,10 @@ async function initApp() {
   // Register Gateway Handlers
   gateway.registerHandler('file', new LocalFsHandler());
   if (config.secrets.igdbClientId && config.secrets.igdbClientSecret) {
-    gateway.registerHandler('igdb', new IgdbHandler(config.secrets.igdbClientId, config.secrets.igdbClientSecret));
+    gateway.registerHandler('igdb', new IgdbHandler(config.secrets.igdbClientId, config.secrets.igdbClientSecret, gateway));
   }
-  gateway.registerHandler('hasheous', new HasheousHandler(config.secrets.hasheousApiKey));
+  gateway.registerHandler('hasheous', new HasheousHandler(config.secrets.hasheousApiKey, gateway));
+
 
   if (config.currentUser) Orbit.updateUser(config.currentUser)
   if (config.currentLibraryPath) Orbit.updateLibrary(config.currentLibraryPath)
@@ -61,7 +62,8 @@ async function main() {
     registerStaging(cli)
     registerHash(cli)
     registerResource(cli)
-    registerBios(cli)
+    registerBios(cli, gateway)
+
 
     cli.help((sections) => {
       const cmdsIndex = sections.findIndex(s => s.title === 'Commands')

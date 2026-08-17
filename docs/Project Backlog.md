@@ -16,15 +16,17 @@
 
 - [ ] **Offline Hash Index (Hasheous / DAT Lookup)**
   - [ ] Local sqlite/json lookup for `hash -> Game Name / IDs`
+- [ ] Add optional logger drain to file
+- [ ] Hide Client Secret from IGDB (and other) callout logs
 - [ ] **`orbit game import` Command Suite**
   - [ ] Simple ROMs import (GBA, NES, SNES)
   - [ ] Disc media conversion & import (PS1 ISO/CUE/BIN -> `.chd` via `chdman` sidecar)
   - [ ] Folder-based games import (PC)
+
+## Dream corner
+
 - [ ] **Savedata Management**
   - [ ] Basic profile savegames structure (`UserData/<profile>/Savedata/<platform>/<game>/`)
-
-## Future
-
 - [ ] **`@orbit/mcp` Server**: Model Context Protocol server exposing `@orbit/core` to AI agents.
 - [ ] **Export Symlinks / Junctions**: Export library structure for EmulationStation, RomM, or RetroArch.
 - [ ] **SteamGridDB Integration**: Automatic image scraping for grids, heroes, and logos into `Assets/`.

@@ -1,12 +1,12 @@
 import type { CAC } from 'cac';
 import * as p from '@clack/prompts';
-import { Orbit, BiosService } from '@orbit/core';
+import { Orbit, BiosService, type IDataGateway } from '@orbit/core';
 import { loadConfig } from '../storage';
 import { resolvePath, getSuggestedPath } from '../paths';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-export default function registerBios(cli: CAC) {
+export default function registerBios(cli: CAC, gateway: IDataGateway) {
   cli.command('bios [action] [path]', 'Manage system BIOS and firmware (import, verify)')
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('--copy', 'Copy files to library (default)', { default: true })
@@ -24,7 +24,8 @@ export default function registerBios(cli: CAC) {
       }
 
       const config = await loadConfig();
-      const biosService = new BiosService(config);
+      const biosService = new BiosService(config, gateway);
+
 
       const action = typeof rawAction === 'string' ? rawAction : undefined;
       const path = typeof rawPath === 'string' ? rawPath : undefined;

@@ -1,8 +1,18 @@
 import type { IDataGateway, DataRequest, GatewayHandler, GatewayMiddleware } from './types';
+import { HttpHandler } from './HttpHandler';
+import { LocalFsHandler } from './LocalFsHandler';
 
 export class LocalNodeGateway implements IDataGateway {
   private handlers = new Map<string, GatewayHandler>();
   private middlewares: { prefixes: string[], middleware: GatewayMiddleware }[] = [];
+
+  constructor() {
+    // Register builtin handlers
+    const httpHandler = new HttpHandler();
+    this.registerHandler('http', httpHandler);
+    this.registerHandler('https', httpHandler);
+    this.registerHandler('file', new LocalFsHandler());
+  }
 
   registerHandler(prefix: string, handler: GatewayHandler): void {
     this.handlers.set(prefix, handler);
@@ -22,7 +32,7 @@ export class LocalNodeGateway implements IDataGateway {
   private getPrefix(uri: string): string {
     const match = uri.match(/^([a-z0-9_-]+):\/\//i);
     if (!match) throw new Error(`Invalid URI format: ${uri}`);
-    return match[1];
+    return match[1].toLowerCase();
   }
 
   private async executePipeline(req: DataRequest, isStream: boolean = false): Promise<any> {
@@ -62,13 +72,17 @@ export class LocalNodeGateway implements IDataGateway {
     return dispatch(req);
   }
 
-  async request<T>(req: DataRequest | string): Promise<T> {
-    const requestObj = this.parseRequest(req);
-    return this.executePipeline(requestObj, false) as Promise<T>;
+  public async request<T = any>(req: DataRequest | string): Promise<T> {
+    const parsedReq = this.parseRequest(req);
+    return this.executePipeline(parsedReq, false);
   }
 
-  async getStream(req: DataRequest | string): Promise<ReadableStream> {
-    const requestObj = this.parseRequest(req);
-    return this.executePipeline(requestObj, true) as Promise<ReadableStream>;
+  public async handle(req: DataRequest | string): Promise<any> {
+    return this.request(req);
+  }
+
+  public async getStream(req: DataRequest | string): Promise<ReadableStream<Uint8Array>> {
+    const parsedReq = this.parseRequest(req);
+    return this.executePipeline(parsedReq, true);
   }
 }
