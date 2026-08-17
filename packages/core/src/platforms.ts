@@ -15,10 +15,34 @@ export class PlatformRegistry {
   }
 
   /**
-   * Finds a platform by its internal slug (id).
+   * Finds a platform by its internal slug (id) or any registered alias (e.g., 'psx' -> 'ps1').
    */
-  static getById(id: string): GamePlatformDefinition | undefined {
-    return this.platforms[id.toLowerCase()];
+  static getById(input: string): GamePlatformDefinition | undefined {
+    if (!input) return undefined;
+    const normalized = input.trim().toLowerCase();
+
+    // 1. Direct match by ID
+    if (this.platforms[normalized]) {
+      return this.platforms[normalized];
+    }
+
+    // 2. Alias match
+    for (const plat of Object.values(this.platforms)) {
+      if (plat.aliases && plat.aliases.some(a => a.toLowerCase() === normalized)) {
+        return plat;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Resolves any input alias or slug to the canonical Orbit platform ID (slug).
+   * E.g. 'psx' -> 'ps1', 'famicom' -> 'nes'.
+   */
+  static resolveSlug(input: string): string | undefined {
+    const plat = this.getById(input);
+    return plat?.id;
   }
 
   /**
@@ -53,7 +77,7 @@ export class PlatformRegistry {
   }
 
   /**
-   * Validates if a platform ID is supported.
+   * Validates if a platform ID or alias is supported.
    */
   static isSupported(id: string): boolean {
     return !!this.getById(id);

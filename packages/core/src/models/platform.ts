@@ -18,6 +18,7 @@ export interface GamePlatformDefinition {
   manufacturer?: string;   // e.g. 'Sony', 'Nintendo'
   category: PlatformCategory;
   extensions: string[];    // Supported file extensions (e.g. ['.bin', '.cue', '.iso'])
+  aliases?: string[];      // Alternative platform names/slugs (e.g. ['psx', 'playstation', 'psone'])
   isRetro?: boolean;       // Flag for UI or logic distinction
 }
 
@@ -28,6 +29,7 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     manufacturer: 'Generic',
     category: 'computer',
     extensions: ['.exe', '.lnk', '.url', '.bat', '.sh'],
+    aliases: ['windows', 'win32', 'dos', 'pc-windows'],
     isRetro: false,
   },
   'ps1': {
@@ -36,6 +38,7 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     manufacturer: 'Sony',
     category: 'console',
     extensions: ['.bin', '.cue', '.iso', '.chd', '.pbp'],
+    aliases: ['psx', 'playstation', 'psone', 'ps-one', 'sony-playstation'],
     isRetro: true,
   },
   'nes': {
@@ -44,6 +47,7 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     manufacturer: 'Nintendo',
     category: 'console',
     extensions: ['.nes', '.fds'],
+    aliases: ['famicom', 'nintendo-entertainment-system'],
     isRetro: true,
   },
   'gba': {
@@ -52,6 +56,7 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     manufacturer: 'Nintendo',
     category: 'handheld',
     extensions: ['.gba'],
+    aliases: ['gameboy-advance', 'game-boy-advance'],
     isRetro: true,
   }
 };

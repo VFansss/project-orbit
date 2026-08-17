@@ -127,9 +127,12 @@ export class BiosService {
         continue;
       }
 
-      const platform = matchedEntry.platform || options?.platformFallback || 'unknown';
-      const isSupportedPlatform = PlatformRegistry.isSupported(platform);
+      const rawPlatform = matchedEntry.platform || options?.platformFallback || 'unknown';
+      const resolvedSlug = PlatformRegistry.resolveSlug(rawPlatform);
+      const platform = resolvedSlug || rawPlatform;
+      const isSupportedPlatform = !!resolvedSlug;
       const targetFilename = matchedEntry.filename || origName;
+
 
       if (isSupportedPlatform) {
         // Case 1: Curated Platform -> Bios/<platform>/
