@@ -36,5 +36,13 @@ export const Logger = {
       const prefix = newline ? '\n' : '';
       console.log(`${prefix}\x1b[2m[DEBUG] ${msg}\x1b[0m`);
     }
+  },
+
+  perf(msg: string, newline = false) {
+    if (levels[currentLevel] >= levels['DEBUG']) {
+      const prefix = newline ? '\n' : '';
+      console.log(`${prefix}\x1b[31m[!] PERF HINT:\x1b[0m \x1b[33m${msg}\x1b[0m`);
+    }
   }
 };
+

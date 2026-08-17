@@ -42,9 +42,11 @@ export class LocalResolverService {
     let folders: string[] = [];
     try {
       folders = await readdir(platformPath);
+      Logger.perf(`uncached directory scan at ${platformPath} - replace with SQLite index`);
     } catch {
       return [];
     }
+
 
     // Pre-calculate user paths to avoid doing readdir inside the O(N) games loop
     const gamesRoot = this.paths.getLibraryPath('Games');
