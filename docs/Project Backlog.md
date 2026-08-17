@@ -9,7 +9,9 @@
 - [x] **Screenshot & Clip Tools**: CLI tools for managing `UserData/<profile>/Screenshots/` and `Clips/`.
 - [x] Hashing & checksum standard (`Hashing.md`, `checksum/`, size-based heuristics)
 - [x] Online metadata scraping & raw payload caching (`IGDB`, `sources/*.json`, `fetched_at`)
+- [x] **Orbit External Resources Subsystem**: Resource definitions (`libretro-system-bios`), AppData storage, tag filtering, version manifest, `orbit resource list`, `orbit resource update`.
 - [ ] **`orbit bios` Command Suite**
+
   - [ ] `orbit bios import <path>` (calculate hashes, match DATs, store in `Games/<platform>/_bios/`)
   - [ ] `orbit bios verify [platform]` (check firmware presence and binary integrity)
 - [ ] **Offline Hash Index (Hasheous / DAT Lookup)**

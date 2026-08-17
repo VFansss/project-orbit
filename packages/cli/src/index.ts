@@ -12,8 +12,10 @@ import registerConfig from './commands/config'
 import registerSearch from './commands/search'
 import registerStaging from './commands/staging'
 import registerHash from './commands/hash'
+import registerResource from './commands/resource'
 
 const cli = cac('orbit')
+
 
 export const gateway = new LocalNodeGateway();
 
@@ -56,6 +58,7 @@ async function main() {
     registerSearch(cli)
     registerStaging(cli)
     registerHash(cli)
+    registerResource(cli)
 
     cli.help((sections) => {
       const cmdsIndex = sections.findIndex(s => s.title === 'Commands')
@@ -67,7 +70,7 @@ async function main() {
         const setup = getCmds(['login', 'library', 'config'])
         const myLibrary = getCmds(['status', 'search'])
         const myMedia = getCmds(['screenshot', 'clip'])
-        const maintenance = getCmds(['staging', 'hash'])
+        const maintenance = getCmds(['staging', 'hash', 'resource'])
 
         sections.splice(cmdsIndex, 1,
           { title: '\x1b[35mSetup\x1b[0m', body: setup },
@@ -76,6 +79,7 @@ async function main() {
           { title: '\x1b[33mMaintenance\x1b[0m', body: maintenance }
         )
       }
+
 
       // Remove the redundant list of command help examples
       const extraIndex = sections.findIndex(s => s.title?.includes('For more info'))

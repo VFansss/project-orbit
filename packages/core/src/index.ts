@@ -19,4 +19,10 @@ export * from './logger';
 export * from './platforms';
 export * from './models/provider';
 export * from './gateway';
+export * from './resources/types';
+export * from './resources/manager';
+export * from './resources/definitions/bios';
+export * from './system';
 export const version = "0.1.0";
+
+
