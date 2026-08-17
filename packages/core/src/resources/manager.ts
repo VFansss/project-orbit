@@ -143,17 +143,18 @@ export class ResourceManager {
 
     // If resource is already downloaded and force is false, return current status
     if (status?.downloaded && !force) {
-      Logger.info(`Resource: ${def.name}`);
-      Logger.info(`License: ${def.license} (${def.licenseUrl})`);
-      Logger.info(`Version: ${status.manifest?.version || versionSubdir}`);
-      if (status.manifest?.etag) Logger.info(`ETag: ${status.manifest.etag}`);
-      Logger.info(`Path: ${resourceDir}`);
+      Logger.debug(`Resource: ${def.name}`);
+      Logger.debug(`License: ${def.license} (${def.licenseUrl})`);
+      Logger.debug(`Version: ${status.manifest?.version || versionSubdir}`);
+      if (status.manifest?.etag) Logger.debug(`ETag: ${status.manifest.etag}`);
+      Logger.debug(`Path: ${resourceDir}`);
       return status;
     }
 
-    Logger.info(`Downloading resource "${def.name}"...`);
-    Logger.info(`Source: ${def.url}`);
-    Logger.info(`License: ${def.license} (${def.licenseUrl})`);
+    Logger.debug(`Downloading resource "${def.name}"...`);
+    Logger.debug(`Source: ${def.url}`);
+    Logger.debug(`License: ${def.license} (${def.licenseUrl})`);
+
 
     await mkdir(resourceDir, { recursive: true });
 

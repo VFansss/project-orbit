@@ -5,7 +5,6 @@ import { ResourceManager } from '../resources/manager';
 import type { LibretroSystemBiosResourceHandler } from '../resources/definitions/libretro-system-bios';
 import type { OrbitConfig } from '../models/config';
 import type { BiosReferenceEntry } from '../resources/types';
-import { Logger } from '../logger';
 import { PlatformRegistry } from '../platforms';
 
 export interface BiosImportResult {
@@ -15,10 +14,13 @@ export interface BiosImportResult {
   identified: boolean;
   isSupportedPlatform: boolean;
   matchedEntry?: BiosReferenceEntry;
+  matchMethod?: 'sha1' | 'md5' | 'crc32' | 'filename';
   targetPath?: string;
+  crc32: string;
   md5: string;
   sha1: string;
-  actionTaken: 'imported' | 'skipped_already_exists' | 'staged_unsupported' | 'ignored_unidentified';
+  sha256: string;
+  actionTaken: 'imported' | 'skipped_already_exists' | 'warn_unsupported_platform' | 'ignored_unidentified';
 }
 
 export interface BiosVerifyReport {
@@ -53,15 +55,37 @@ export class BiosService {
   }
 
   /**
+   * Helper to scan files in a directory (optionally recursive).
+   */
+  private async scanDirectory(dirPath: string, recursive = false): Promise<string[]> {
+    const filePaths: string[] = [];
+    const entries = await readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue;
+      const fullPath = join(dirPath, entry.name);
+      if (entry.isFile()) {
+        filePaths.push(fullPath);
+      } else if (entry.isDirectory() && recursive) {
+        const subFiles = await this.scanDirectory(fullPath, true);
+        filePaths.push(...subFiles);
+      }
+    }
+    return filePaths;
+  }
+
+  /**
    * Imports a BIOS binary file or a directory of BIOS files.
+   * - BIOS files MUST match by HASH (SHA1, MD5, CRC32) against DAT index.
+   * - Loose filename includes ("1000") is disabled to prevent non-BIOS file collisions.
    * - Curated platforms (ps1, gba, pc, etc.) are placed in Bios/<platform>/<filename>.
-   * - Un-curated platforms are moved to _staging/bios/ with alerts.
+   * - Un-curated platforms are NOT moved/staged: reported as explicit warning, left untouched.
    * - Unidentified files are IGNORED (left untouched) and reported.
    * - Already existing identical files are skipped without overwriting.
+   * - Writes .crc32, .md5, .sha1, and .sha256 sidecar files into checksum/.
    */
   public async importBios(
     sourcePath: string,
-    options?: { copy?: boolean; platformFallback?: string; force?: boolean }
+    options?: { copy?: boolean; platformFallback?: string; force?: boolean; recursive?: boolean; allowFilenameFallback?: boolean }
   ): Promise<BiosImportResult[]> {
     const handler = await this.getBiosHandler();
     const libraryRoot = this.getLibraryRoot();
@@ -76,12 +100,7 @@ export class BiosService {
       filesToProcess.push(sourcePath);
     } else {
       try {
-        const entries = await readdir(sourcePath, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.isFile() && !entry.name.startsWith('.')) {
-            filesToProcess.push(join(sourcePath, entry.name));
-          }
-        }
+        filesToProcess = await this.scanDirectory(sourcePath, options?.recursive ?? false);
       } catch (err: any) {
         throw new Error(`Invalid source path "${sourcePath}": ${err.message}`);
       }
@@ -90,38 +109,53 @@ export class BiosService {
     for (const filePath of filesToProcess) {
       const origName = basename(filePath);
       
-      // Calculate hashes
+      // Calculate all hashes in single streaming pass
       const resList = await calculateFileHashes(filePath);
       const hashes = resList[0]?.hashes || {};
       const sha1 = hashes.sha1 || '';
       const md5 = hashes.md5 || '';
+      const crc32 = hashes.crc32 || '';
+      const sha256 = hashes.sha256 || '';
 
-      // Lookup in Libretro System BIOS DAT by SHA1, MD5, or CRC32
+      // Lookup strictly by HASH in Libretro System BIOS DAT
+      let matchMethod: 'sha1' | 'md5' | 'crc32' | 'filename' | undefined;
       let matchedEntry = await handler.lookupByHash(sha1);
-      if (!matchedEntry) matchedEntry = await handler.lookupByHash(md5);
-      if (!matchedEntry && hashes.crc32) matchedEntry = await handler.lookupByHash(hashes.crc32);
+      if (matchedEntry) matchMethod = 'sha1';
 
-      // Fallback matching by filename if hash lookup yields nothing
-      if (!matchedEntry) {
+      if (!matchedEntry && md5) {
+        matchedEntry = await handler.lookupByHash(md5);
+        if (matchedEntry) matchMethod = 'md5';
+      }
+
+      if (!matchedEntry && crc32) {
+        matchedEntry = await handler.lookupByHash(crc32);
+        if (matchedEntry) matchMethod = 'crc32';
+      }
+
+      // Optional fallback: Match ONLY if exact filename match AND explicitly allowed
+      if (!matchedEntry && options?.allowFilenameFallback) {
         const byName = await handler.query({ filename: origName });
-        if (byName.matched && byName.results.length > 0) {
-          matchedEntry = byName.results[0];
+        const exactMatch = byName.results.find(r => r.filename.toLowerCase() === origName.toLowerCase());
+        if (exactMatch) {
+          matchedEntry = exactMatch;
+          matchMethod = 'filename';
         }
       }
 
       const identified = !!matchedEntry;
 
-      // Case 3: Completely unidentified file - Ignore it completely, leave untouched!
+      // Case 3: Completely unidentified file - Ignore completely, leave untouched!
       if (!identified) {
-        Logger.info(`[Ignore] File "${origName}" is not a recognized BIOS file. Left untouched.`);
         results.push({
           sourcePath: filePath,
           filename: origName,
           platform: 'unknown',
           identified: false,
           isSupportedPlatform: false,
+          crc32,
           md5,
           sha1,
+          sha256,
           actionTaken: 'ignored_unidentified'
         });
         continue;
@@ -133,100 +167,97 @@ export class BiosService {
       const isSupportedPlatform = !!resolvedSlug;
       const targetFilename = matchedEntry.filename || origName;
 
-
-      if (isSupportedPlatform) {
-        // Case 1: Curated Platform -> Bios/<platform>/
-        const biosDir = join(libraryRoot, 'Bios', platform);
-        const checksumDir = join(biosDir, 'checksum');
-        const targetPath = join(biosDir, targetFilename);
-
-        const existingFile = Bun.file(targetPath);
-        if ((await existingFile.exists()) && !options?.force) {
-          // Check if existing file has identical SHA1
-          const sha1File = Bun.file(join(checksumDir, `${targetFilename}.sha1`));
-          let existingSha1 = '';
-          if (await sha1File.exists()) {
-            existingSha1 = (await sha1File.text()).trim().toLowerCase();
-          }
-
-          if (existingSha1 === sha1.toLowerCase() || existingSha1 === '') {
-            Logger.info(`[Skip] BIOS "${targetFilename}" already exists in Bios/${platform}/ with identical checksum.`);
-            results.push({
-              sourcePath: filePath,
-              filename: targetFilename,
-              platform,
-              identified: true,
-              isSupportedPlatform: true,
-              matchedEntry,
-              targetPath,
-              md5,
-              sha1,
-              actionTaken: 'skipped_already_exists'
-            });
-            continue;
-          }
-        }
-
-        await mkdir(biosDir, { recursive: true });
-        await mkdir(checksumDir, { recursive: true });
-
-        const sourceFile = Bun.file(filePath);
-        await Bun.write(targetPath, sourceFile);
-
-        // Write checksum files according to Orbit Hashing standard
-        await Bun.write(join(checksumDir, `${targetFilename}.sha1`), sha1);
-        await Bun.write(join(checksumDir, `${targetFilename}.md5`), md5);
-
-        if (!options?.copy && filePath !== targetPath) {
-          const { rm } = await import('node:fs/promises');
-          await rm(filePath, { force: true });
-        }
-
-        Logger.info(`[✓] Imported BIOS "${targetFilename}" -> Bios/${platform}/`);
-
+      if (!isSupportedPlatform) {
+        // Case 2: Recognized BIOS but platform NOT curated in Orbit -> DO NOT MOVE, DO NOT STAGE, just warn!
         results.push({
           sourcePath: filePath,
           filename: targetFilename,
-          platform,
-          identified: true,
-          isSupportedPlatform: true,
-          matchedEntry,
-          targetPath,
-          md5,
-          sha1,
-          actionTaken: 'imported'
-        });
-
-      } else {
-        // Case 2: Un-curated platform -> Move to _staging/bios/ with Alert
-        const stagingBiosDir = join(libraryRoot, '_staging', 'bios');
-        const targetPath = join(stagingBiosDir, targetFilename);
-
-        await mkdir(stagingBiosDir, { recursive: true });
-
-        const sourceFile = Bun.file(filePath);
-        await Bun.write(targetPath, sourceFile);
-
-        if (!options?.copy && filePath !== targetPath) {
-          const { rm } = await import('node:fs/promises');
-          await rm(filePath, { force: true });
-        }
-
-        Logger.warn(`[!] BIOS matched platform "${platform}" (Not curated in Orbit). Moved to _staging/bios/`);
-
-        results.push({
-          sourcePath: filePath,
-          filename: targetFilename,
-          platform,
+          platform: rawPlatform,
           identified: true,
           isSupportedPlatform: false,
           matchedEntry,
-          targetPath,
+          matchMethod,
+          crc32,
           md5,
           sha1,
-          actionTaken: 'staged_unsupported'
+          sha256,
+          actionTaken: 'warn_unsupported_platform'
         });
+        continue;
       }
+
+      // Case 1: Curated Platform -> Bios/<platform>/
+      const biosDir = join(libraryRoot, 'Bios', platform);
+      const checksumDir = join(biosDir, 'checksum');
+      const targetPath = join(biosDir, targetFilename);
+
+      const existingFile = Bun.file(targetPath);
+      if ((await existingFile.exists()) && !options?.force) {
+        // Check if existing file has identical SHA1
+        const sha1File = Bun.file(join(checksumDir, `${targetFilename}.sha1`));
+        let existingSha1 = '';
+        if (await sha1File.exists()) {
+          existingSha1 = (await sha1File.text()).trim().toLowerCase();
+        }
+
+        if (existingSha1 === sha1.toLowerCase() || existingSha1 === '') {
+          results.push({
+            sourcePath: filePath,
+            filename: targetFilename,
+            platform,
+            identified: true,
+            isSupportedPlatform: true,
+            matchedEntry,
+            matchMethod,
+            targetPath,
+            crc32,
+            md5,
+            sha1,
+            sha256,
+            actionTaken: 'skipped_already_exists'
+          });
+          continue;
+        }
+      }
+
+      await mkdir(biosDir, { recursive: true });
+      await mkdir(checksumDir, { recursive: true });
+
+      const sourceFile = Bun.file(filePath);
+      await Bun.write(targetPath, sourceFile);
+
+      // Write checksum files according to Orbit Hashing standard (.sha1, .md5, .crc32, .sha256)
+      await Bun.write(join(checksumDir, `${targetFilename}.sha1`), sha1);
+      await Bun.write(join(checksumDir, `${targetFilename}.md5`), md5);
+      if (crc32) {
+        await Bun.write(join(checksumDir, `${targetFilename}.crc32`), crc32);
+      }
+      if (sha256) {
+        await Bun.write(join(checksumDir, `${targetFilename}.sha256`), sha256);
+      }
+
+      const isCopyDefault = options?.copy !== false;
+
+      if (!isCopyDefault && filePath !== targetPath) {
+        const { rm } = await import('node:fs/promises');
+        await rm(filePath, { force: true });
+      }
+
+      results.push({
+        sourcePath: filePath,
+        filename: targetFilename,
+        platform,
+        identified: true,
+        isSupportedPlatform: true,
+        matchedEntry,
+        matchMethod,
+        targetPath,
+        crc32,
+        md5,
+        sha1,
+        sha256,
+        actionTaken: 'imported'
+      });
     }
 
     return results;

@@ -9,7 +9,7 @@ const levels: Record<LogLevel, number> = {
 let currentLevel: LogLevel = 'ERROR';
 
 /**
- * TODO: Agnostic logger that respects the configured LogLevel.
+ * Agnostic logger that respects the configured LogLevel.
  */
 export const Logger = {
   /**
@@ -22,6 +22,11 @@ export const Logger = {
   error(msg: string, newline = false) {
     const prefix = newline ? '\n' : '';
     console.error(`${prefix}\x1b[31m[ERROR]\x1b[0m ${msg}`);
+  },
+
+  warn(msg: string, newline = false) {
+    const prefix = newline ? '\n' : '';
+    console.warn(`${prefix}\x1b[33m[WARN]\x1b[0m ${msg}`);
   },
 
   info(msg: string, newline = false) {
@@ -45,4 +50,3 @@ export const Logger = {
     }
   }
 };
-

@@ -3,13 +3,14 @@ import * as p from '@clack/prompts';
 import { Orbit, BiosService } from '@orbit/core';
 import { loadConfig } from '../storage';
 import { resolvePath, getSuggestedPath } from '../paths';
-
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export default function registerBios(cli: CAC) {
   cli.command('bios [action] [path]', 'Manage system BIOS and firmware (import, verify)')
-    .option('--copy', 'Copy files instead of moving them', { default: false })
+    .option('-r, --recursive', 'Scan source directory recursively', { default: false })
+    .option('--copy', 'Copy files to library (default)', { default: true })
+    .option('--move', 'Move files instead of copying them', { default: false })
     .option('--force', 'Force overwrite existing BIOS files', { default: false })
     .option('--platform <platform>', 'Specify or fallback platform name')
 
@@ -59,57 +60,78 @@ export default function registerBios(cli: CAC) {
 
         const absolutePath = resolvePath(targetPath);
 
+        const isRecursive = options.recursive || options.r;
         const s = p.spinner();
-        s.start(`Scanning and identifying BIOS firmware at "${absolutePath}"...`);
+        if (isRecursive) {
+          s.start(`Scanning source directory RECURSIVELY at "${absolutePath}"...`);
+        } else {
+          s.start(`Scanning top-level files at "${absolutePath}" (pass -r/--recursive for subfolders)...`);
+        }
 
         try {
+          const shouldCopy = options.move ? false : (options.copy !== false);
           const results = await biosService.importBios(absolutePath, {
-            copy: options.copy,
+            copy: shouldCopy,
             force: options.force,
+            recursive: isRecursive,
             platformFallback: options.platform
           });
-
 
           s.stop(`Import finished. Processed ${results.length} file(s).`);
 
           if (results.length === 0) {
-            console.log('\x1b[33mNo valid BIOS files were processed.\x1b[0m');
+            console.log('\x1b[33mNo files were found in source directory.\x1b[0m');
             return;
           }
 
-          console.log('\n\x1b[34m--- Imported BIOS Summary ---\x1b[0m\n');
-          const ignoredList: string[] = [];
+          console.log('\n\x1b[34m--- Orbit BIOS Import Summary ---\x1b[0m\n');
+          
+          const imported = results.filter(r => r.actionTaken === 'imported');
+          const skipped = results.filter(r => r.actionTaken === 'skipped_already_exists');
+          const warned = results.filter(r => r.actionTaken === 'warn_unsupported_platform');
+          const ignored = results.filter(r => r.actionTaken === 'ignored_unidentified');
 
-          for (const res of results) {
-            if (res.actionTaken === 'imported') {
-              console.log(`\x1b[32m[Imported]\x1b[0m \x1b[1m${res.filename}\x1b[0m ➡️ Bios/\x1b[36m${res.platform}\x1b[0m/`);
-              console.log(`  Description: ${res.matchedEntry?.description || res.filename}`);
-              console.log(`  SHA1: ${res.sha1}`);
-              console.log('');
-            } else if (res.actionTaken === 'skipped_already_exists') {
-              console.log(`\x1b[36m[Skipped - Already Exists]\x1b[0m \x1b[1m${res.filename}\x1b[0m in Bios/\x1b[36m${res.platform}\x1b[0m/`);
-              console.log(`  SHA1: ${res.sha1}`);
-              console.log('');
-            } else if (res.actionTaken === 'staged_unsupported') {
-              console.log(`\x1b[33m[ALERT - Platform Not Curated]\x1b[0m \x1b[1m${res.filename}\x1b[0m ➡️ _staging/bios/`);
-              console.log(`  Matched Platform: \x1b[36m${res.platform}\x1b[0m (Not currently curated in Orbit)`);
-              console.log(`  SHA1: ${res.sha1}`);
-              console.log('');
-            } else if (res.actionTaken === 'ignored_unidentified') {
-              ignoredList.push(res.sourcePath);
-            }
-          }
-
-          if (ignoredList.length > 0) {
-            console.log(`\x1b[33m[Notice] Ignored ${ignoredList.length} Unrecognized File(s) (Left Untouched at Source):\x1b[0m`);
-            for (const path of ignoredList) {
-              console.log(`  - ${path}`);
+          // 1. Ignored Non-BIOS Summary
+          if (ignored.length > 0) {
+            console.log(`\x1b[2m[x Ignored]\x1b[0m   ${ignored.length} Non-BIOS file(s) \x1b[2m(Left untouched at source)\x1b[0m`);
+            if (ignored.length <= 5) {
+              for (const item of ignored) {
+                console.log(`  \x1b[2m• ${item.sourcePath}\x1b[0m`);
+              }
             }
             console.log('');
           }
 
-          console.log('\x1b[32mSuccess!\x1b[0m BIOS import processing complete.');
+          // 2. Warnings (Un-curated platforms)
+          for (const res of warned) {
+            console.log(`\x1b[33m[! Warning]\x1b[0m  \x1b[1m${res.filename}\x1b[0m \x1b[33m(Matched platform "${res.platform}", which is not currently curated - Left untouched)\x1b[0m`);
+            console.log(`  \x1b[2mFrom Source: ${res.sourcePath}\x1b[0m`);
+            console.log(`  \x1b[2mSHA1: ${res.sha1}\x1b[0m\n`);
+          }
 
+          // 3. Skipped (Already existing identical BIOS)
+          for (const res of skipped) {
+            console.log(`\x1b[36m[= Skipped]\x1b[0m  \x1b[1m${res.filename}\x1b[0m \x1b[2m(Already exists in Bios/${res.platform}/ with matching hash)\x1b[0m`);
+            console.log(`  \x1b[2mFrom Source: ${res.sourcePath}\x1b[0m\n`);
+          }
+
+          // 4. Imported BIOS (Prominently listed at bottom!)
+          for (const res of imported) {
+            const desc = res.matchedEntry?.description ? ` (\x1b[2m${res.matchedEntry.description}\x1b[0m)` : '';
+            const matchInfo = res.matchMethod ? ` \x1b[32m[Matched via ${res.matchMethod.toUpperCase()} Hash]\x1b[0m` : '';
+            console.log(`\x1b[32m[✓ Imported]\x1b[0m \x1b[1m${res.filename}\x1b[0m ➡️ Bios/\x1b[36m${res.platform}\x1b[0m/${desc}${matchInfo}`);
+            console.log(`  \x1b[2mFrom Source: ${res.sourcePath}\x1b[0m`);
+            console.log(`  \x1b[2mCRC32: ${res.crc32} | MD5: ${res.md5} | SHA1: ${res.sha1}\x1b[0m\n`);
+          }
+
+
+          if (options.move) {
+            console.log('\x1b[33m[! Warning]\x1b[0m Source files were \x1b[1mmoved\x1b[0m (deleted from source location).');
+          } else {
+            console.log('\x1b[36m[Note]\x1b[0m Files were \x1b[1mcopied\x1b[0m to library (source files left untouched). Use \x1b[1m--move\x1b[0m to move files.');
+          }
+
+          console.log(`\x1b[32mSuccess!\x1b[0m Imported \x1b[1m${imported.length}\x1b[0m BIOS file(s).`);
 
         } catch (err: any) {
           s.stop('Import failed.', 1);
