@@ -4,7 +4,7 @@ import { ResourceManager, SystemUtils } from '@orbit/core';
 import { loadConfig } from '../storage';
 
 export default function registerResource(cli: CAC) {
-  cli.command('resource [action] [id]', 'Manage external resources (list, update, open)')
+  cli.command('resource [action] [id]', 'Manage external resources (list, update, open, purge)')
     .option('--tag <tag>', 'Filter resources by tag (e.g. #bios, #dat)')
     .option('--force', 'Force re-download even if already downloaded')
     .action(async (rawAction?: any, rawId?: any, rawOptions?: any) => {
@@ -23,7 +23,8 @@ export default function registerResource(cli: CAC) {
           options: [
             { value: 'list', label: 'List', hint: 'List registered resources and download status' },
             { value: 'update', label: 'Update / Sync', hint: 'Download or update external resources' },
-            { value: 'open', label: 'Open', hint: 'Open resource folder in system file explorer' }
+            { value: 'open', label: 'Open', hint: 'Open resource folder in system file explorer' },
+            { value: 'purge', label: 'Purge / Clean', hint: 'Delete local downloaded resource files' }
           ],
         });
         if (p.isCancel(response)) process.exit(0);
@@ -113,13 +114,44 @@ export default function registerResource(cli: CAC) {
             console.error(`\x1b[31mError:\x1b[0m ${err.message}`);
           }
         } else {
-          // Update all resources
-          s.start('Updating all registered external resources...');
+          // Interactive selection or filtered batch update
+          const list = await manager.listResources(options?.tag);
+          if (list.length === 0) {
+            console.log('\x1b[33mNo resources found matching criteria to update.\x1b[0m');
+            return;
+          }
+
+          let selectedIds: string[] = [];
+
+          if (process.stdout.isTTY) {
+            const selectOpts = list.map(r => ({
+              value: r.definition.id,
+              label: `${r.definition.name} (${r.definition.id})`,
+              hint: r.downloaded ? `[Downloaded: ${r.manifest?.version || 'latest'}]` : '[Not Downloaded]'
+            }));
+
+            const selected = await p.multiselect({
+              message: 'Select external resources to download/update (Use [space] to select):',
+              options: selectOpts,
+              required: false
+            });
+
+            if (p.isCancel(selected)) process.exit(0);
+            selectedIds = selected as string[];
+          } else {
+            selectedIds = list.map(r => r.definition.id);
+          }
+
+          if (selectedIds.length === 0) {
+            console.log('\x1b[33mNo resources selected.\x1b[0m');
+            return;
+          }
+
+          s.start(`Updating ${selectedIds.length} resource(s)...`);
           try {
-            const list = await manager.listResources(options?.tag);
             let count = 0;
-            for (const res of list) {
-              await manager.fetchResource(res.definition.id, options?.force ?? true);
+            for (const resId of selectedIds) {
+              await manager.fetchResource(resId, options?.force ?? true);
               count++;
             }
             s.stop(`Updated ${count} resource(s) successfully.`);
@@ -131,7 +163,43 @@ export default function registerResource(cli: CAC) {
         return;
       }
 
-      console.error(`\x1b[31mUnknown resource action:\x1b[0m ${targetAction}. Use 'list', 'update', or 'open'.`);
+      if (targetAction === 'purge' || targetAction === 'clean') {
+        const s = p.spinner();
+
+        if (id) {
+          const confirm = await p.confirm({
+            message: `Are you sure you want to purge local resource "${id}"?`,
+            initialValue: false
+          });
+          if (!confirm || p.isCancel(confirm)) process.exit(0);
+
+          s.start(`Purging resource "${id}"...`);
+          try {
+            await manager.purgeResource(id);
+            s.stop(`Resource "${id}" purged successfully.`);
+          } catch (err: any) {
+            s.stop(`Failed to purge resource "${id}".`, 1);
+            console.error(`\x1b[31mError:\x1b[0m ${err.message}`);
+          }
+        } else {
+          const confirm = await p.confirm({
+            message: 'Are you sure you want to purge ALL local downloaded external resources?',
+            initialValue: false
+          });
+          if (!confirm || p.isCancel(confirm)) process.exit(0);
+
+          s.start('Purging all local external resources...');
+          try {
+            await manager.purgeResource();
+            s.stop('All local external resources purged successfully.');
+          } catch (err: any) {
+            s.stop('Failed to purge resources.', 1);
+            console.error(`\x1b[31mError:\x1b[0m ${err.message}`);
+          }
+        }
+        return;
+      }
+
+      console.error(`\x1b[31mUnknown resource action:\x1b[0m ${targetAction}. Use 'list', 'update', 'open', or 'purge'.`);
     });
 }
-

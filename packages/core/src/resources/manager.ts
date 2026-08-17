@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, stat, rm } from 'node:fs/promises';
+
 import { parse as parseToml } from 'smol-toml';
 import type { 
   OrbitResourceDefinition, 
@@ -80,14 +81,21 @@ export class ResourceManager {
   /**
    * Lists all registered resources, optionally filtered by tag.
    */
-  public async listResources(tagFilter?: string): Promise<OrbitResourceStatus[]> {
+  public async listResources(tagFilter?: string | string[]): Promise<OrbitResourceStatus[]> {
     const list: OrbitResourceStatus[] = [];
-    const normalizedTag = tagFilter ? tagFilter.toLowerCase().replace(/^#/, '') : null;
+
+    let targetTags: string[] = [];
+    if (typeof tagFilter === 'string') {
+      targetTags = tagFilter.split(',').map(t => t.trim().toLowerCase().replace(/^#/, ''));
+    } else if (Array.isArray(tagFilter)) {
+      targetTags = tagFilter.map(t => t.trim().toLowerCase().replace(/^#/, ''));
+    }
 
     for (const def of this.definitions.values()) {
-      if (normalizedTag) {
-        const hasTag = def.tags.some(t => t.toLowerCase().replace(/^#/, '') === normalizedTag);
-        if (!hasTag) continue;
+      if (targetTags.length > 0) {
+        const defTags = def.tags.map(t => t.toLowerCase().replace(/^#/, ''));
+        const matches = targetTags.some(t => defTags.includes(t));
+        if (!matches) continue;
       }
 
       const status = await this.getStatus(def.id);
@@ -96,6 +104,7 @@ export class ResourceManager {
 
     return list;
   }
+
 
   /**
    * Fetches/updates a resource via HTTP gateway if not downloaded or if forced.
@@ -166,4 +175,22 @@ export class ResourceManager {
     };
   }
 
+  /**
+   * Purges / deletes local downloaded resource files from disk.
+   */
+  public async purgeResource(id?: string): Promise<string[]> {
+    const purgedIds: string[] = [];
+    if (id) {
+      const def = this.definitions.get(id);
+      const targetDir = join(this.getResourcesRootDir(), id);
+      await rm(targetDir, { recursive: true, force: true });
+      purgedIds.push(id);
+      Logger.info(`Purged local resource "${def?.name || id}" at ${targetDir}`);
+    } else {
+      const rootDir = this.getResourcesRootDir();
+      await rm(rootDir, { recursive: true, force: true });
+      Logger.info(`Purged all local external resources at ${rootDir}`);
+    }
+    return purgedIds;
+  }
 }
