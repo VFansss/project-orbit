@@ -21,8 +21,13 @@ export class ClrMameProParser {
     if (text.includes('atari 2600')) return 'atari2600';
     if (text.includes('atari 7800')) return 'atari7800';
 
+    if (comment && comment.trim().length > 0) {
+      return comment.trim();
+    }
+
     return 'unknown';
   }
+
 
   /**
    * Parses raw Libretro / ClrMamePro System.dat text line by line.

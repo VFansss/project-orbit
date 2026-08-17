@@ -4,13 +4,38 @@ import { Orbit, BiosService, ResourceManager, type IDataGateway } from '@orbit/c
 import { loadConfig } from '../storage';
 import { resolvePath, getSuggestedPath } from '../paths';
 
+async function ensureBiosResource(resourceManager: ResourceManager): Promise<void> {
+  const status = await resourceManager.getStatus('libretro-system-bios');
+  if (!status?.downloaded) {
+    const def = status?.definition;
+    console.log(`\n\x1b[33m[!] Required System Resource Missing:\x1b[0m \x1b[1m${def?.name || 'Libretro System BIOS DAT'}\x1b[0m`);
+    console.log(`To identify and verify BIOS files, Orbit needs to download the official DAT index.`);
+    if (def?.url) console.log(`  \x1b[2mSource:  ${def.url}\x1b[0m`);
+    if (def?.license) console.log(`  \x1b[2mLicense: ${def.license} (${def.licenseUrl})\x1b[0m\n`);
+
+    const s = p.spinner();
+    s.start(`Downloading and installing "${def?.name || 'Libretro System BIOS DAT'}"...`);
+    try {
+      await resourceManager.fetchResource('libretro-system-bios');
+      s.stop(`\x1b[32m[✓]\x1b[0m Successfully downloaded and cached "${def?.name || 'Libretro System BIOS DAT'}".\n`);
+    } catch (err: any) {
+      s.stop('Failed to download required resource.', 1);
+      console.error(`\n\x1b[31mCritical Error:\x1b[0m ${err.message}`);
+      process.exit(1);
+    }
+  }
+}
+
+
 export default function registerBios(cli: CAC, gateway: IDataGateway) {
   cli.command('bios [action] [path]', 'Manage system BIOS and firmware (import, verify)')
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
+    .option('-v, --verbose', 'Show detailed list of all ignored files', { default: false })
     .option('--copy', 'Copy files to library (default)', { default: true })
     .option('--move', 'Move files instead of copying them', { default: false })
     .option('--force', 'Force overwrite existing BIOS files', { default: false })
     .option('--platform <platform>', 'Specify or fallback platform name')
+
 
     .action(async (rawAction?: any, rawPath?: any, flags?: any) => {
       // Requirements Check
@@ -22,8 +47,8 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
       }
 
       const config = await loadConfig();
+      const resourceManager = new ResourceManager(config, gateway);
       const biosService = new BiosService(config, gateway);
-
 
       const action = typeof rawAction === 'string' ? rawAction : undefined;
       const path = typeof rawPath === 'string' ? rawPath : undefined;
@@ -45,13 +70,7 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
 
       if (targetAction === 'import' || targetAction === 'parse') {
         // --- PREFLIGHT: ensure required DAT resource is available BEFORE scanning ---
-        try {
-          const resourceManager = new ResourceManager(config, gateway);
-          await resourceManager.fetchResource('libretro-system-bios');
-        } catch (err: any) {
-          p.log.error(err.message);
-          process.exit(1);
-        }
+        await ensureBiosResource(resourceManager);
 
         let targetPath = path;
 
@@ -102,13 +121,16 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
           // 1. Ignored Non-BIOS Summary
           if (ignored.length > 0) {
             console.log(`\x1b[2m[x Ignored]\x1b[0m   ${ignored.length} Non-BIOS file(s) \x1b[2m(Left untouched at source)\x1b[0m`);
-            if (ignored.length <= 5) {
+            if (options.verbose || options.v || ignored.length <= 5) {
               for (const item of ignored) {
                 console.log(`  \x1b[2m• ${item.sourcePath}\x1b[0m`);
               }
+            } else {
+              console.log(`  \x1b[2m(Use -v, --verbose to list all ${ignored.length} ignored files)\x1b[0m`);
             }
             console.log('');
           }
+
 
           // 2. Warnings (Un-curated platforms)
           for (const res of warned) {
@@ -132,7 +154,6 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
             console.log(`  \x1b[2mCRC32: ${res.crc32} | MD5: ${res.md5} | SHA1: ${res.sha1}\x1b[0m\n`);
           }
 
-
           if (options.move) {
             console.log('\x1b[33m[! Warning]\x1b[0m Source files were \x1b[1mmoved\x1b[0m (deleted from source location).');
           } else {
@@ -150,12 +171,16 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
       }
 
       if (targetAction === 'verify') {
+        // --- PREFLIGHT: ensure required DAT resource is available BEFORE verifying ---
+        await ensureBiosResource(resourceManager);
+
         const s = p.spinner();
         s.start('Verifying installed BIOS checksums and firmware integrity...');
 
         try {
           const reports = await biosService.verifyBios(options.platform || path);
           s.stop(`Verification finished. Scanned ${reports.length} file(s).`);
+
 
           if (reports.length === 0) {
             console.log('\x1b[33mNo installed BIOS files found in library Bios/ folder.\x1b[0m');

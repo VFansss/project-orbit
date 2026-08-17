@@ -149,11 +149,6 @@ export class ResourceManager {
 
     // If resource is already downloaded and force is false, return current status silently
     if (status?.downloaded && !force) {
-      Logger.debug(`Resource: ${def.name}`);
-      Logger.debug(`License: ${def.license} (${def.licenseUrl})`);
-      Logger.debug(`Version: ${status.manifest?.version || versionSubdir}`);
-      if (status.manifest?.etag) Logger.debug(`ETag: ${status.manifest.etag}`);
-      Logger.debug(`Path: ${resourceDir}`);
       return status;
     }
 
@@ -161,11 +156,6 @@ export class ResourceManager {
     const fileName = urlParts[urlParts.length - 1] || 'resource.data';
     const filePath = join(resourceDir, fileName);
     const payloadFile = Bun.file(filePath);
-
-    // Prominent INFO notification when required resource is missing or being downloaded
-    Logger.info(`Downloading required system resource "${def.name}"...`);
-    Logger.info(`Source URL: ${def.url}`);
-    Logger.info(`License: ${def.license} (${def.licenseUrl})`);
 
     await mkdir(resourceDir, { recursive: true });
 
@@ -191,8 +181,9 @@ export class ResourceManager {
       };
 
       await Bun.write(join(resourceDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
-      Logger.info(`[✓] Successfully downloaded and cached "${def.name}".`);
     } catch (err: any) {
+
+
       // If error occurs during fetch (network error, rate limit 429) and file does NOT exist, EXPLODE immediately!
       if (!(await payloadFile.exists())) {
         throw new Error(`CRITICAL: Failed to download required resource "${def.name}": ${err.message}`);
