@@ -8,7 +8,7 @@ import type {
   OrbitResourceManifest, 
   OrbitResourceStatus 
 } from './types';
-import { biosResources } from './definitions/bios';
+import { biosResources, LibretroSystemBiosResourceHandler } from './definitions/bios';
 import { Logger } from '../logger';
 import type { OrbitConfig } from '../models/config';
 import type { IDataGateway } from '../gateway/types';
@@ -19,6 +19,23 @@ export class ResourceManager {
   constructor(private config: OrbitConfig, private gateway?: IDataGateway) {
     this.registerDefinitions(biosResources);
   }
+
+  /**
+   * Instantiates and retrieves the handler for a specific resource ID.
+   */
+  public getHandler<T = any>(id: string): T | null {
+    const def = this.definitions.get(id);
+    if (!def) return null;
+
+    const resourceDir = this.getResourceDir(id, def.version || 'latest');
+
+    if (id === 'libretro-system-bios') {
+      return new LibretroSystemBiosResourceHandler(resourceDir) as unknown as T;
+    }
+
+    return null;
+  }
+
 
 
   /**
@@ -63,12 +80,15 @@ export class ResourceManager {
     let manifest: OrbitResourceManifest | null = null;
 
     try {
-      const manifestRaw = await readFile(manifestPath, 'utf-8');
-      manifest = JSON.parse(manifestRaw);
-      downloaded = true;
+      const file = Bun.file(manifestPath);
+      if (await file.exists()) {
+        manifest = await file.json();
+        downloaded = true;
+      }
     } catch {
       downloaded = false;
     }
+
 
     return {
       definition: def,
@@ -153,7 +173,7 @@ export class ResourceManager {
     const fileName = urlParts[urlParts.length - 1] || 'resource.data';
     const filePath = join(resourceDir, fileName);
 
-    await writeFile(filePath, rawData);
+    await Bun.write(filePath, rawData);
 
     const manifest: OrbitResourceManifest = {
       id: def.id,
@@ -163,7 +183,8 @@ export class ResourceManager {
       lastModified
     };
 
-    await writeFile(join(resourceDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+    await Bun.write(join(resourceDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
 
     Logger.info(`Resource saved successfully at ${resourceDir}`);
 

@@ -22,7 +22,9 @@ export * from './gateway';
 export * from './resources/types';
 export * from './resources/manager';
 export * from './resources/definitions/bios';
+export * from './resources/parsers/clrmamepro';
 export * from './system';
 export const version = "0.1.0";
+
 
 

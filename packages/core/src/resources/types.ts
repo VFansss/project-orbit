@@ -26,3 +26,30 @@ export interface OrbitResourceStatus {
   localPath: string;
   manifest: OrbitResourceManifest | null;
 }
+
+export interface BiosReferenceEntry {
+  platform: string;
+  filename: string;
+  description: string;
+  size: number;
+  crc32?: string;
+  md5?: string;
+  sha1?: string;
+}
+
+export interface QueryParamDescriptor {
+  key: string;
+  label: string;
+  description?: string;
+}
+
+export interface ResourceQueryResult {
+  matched: boolean;
+  results: any[];
+}
+
+export interface OrbitResourceHandler {
+  definition: OrbitResourceDefinition;
+  getDescriptors?(): QueryParamDescriptor[];
+  query?(params: Record<string, any>): Promise<ResourceQueryResult>;
+}
