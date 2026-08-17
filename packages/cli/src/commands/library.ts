@@ -1,23 +1,10 @@
 import type { CAC } from 'cac'
 import * as p from '@clack/prompts'
-import { Orbit, LIBRARY_MARKER } from '@orbit/core'
+import { Orbit, LIBRARY_MARKER, SystemUtils } from '@orbit/core'
 import { loadConfig, saveConfig } from '../storage'
 import { join } from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { exec } from 'node:child_process'
-import { platform as osPlatform } from 'node:os'
 import { resolvePath, getSuggestedLibraryPath } from '../paths'
-
-function openFolder(folderPath: string) {
-  const os = osPlatform()
-  if (os === 'win32') {
-    exec(`start "" "${folderPath}"`)
-  } else if (os === 'darwin') {
-    exec(`open "${folderPath}"`)
-  } else {
-    exec(`xdg-open "${folderPath}"`)
-  }
-}
 
 export default (cli: CAC) => {
   cli
@@ -32,9 +19,10 @@ export default (cli: CAC) => {
         }
         
         console.log(`\x1b[34mOpening library folder:\x1b[0m ${config.currentLibraryPath}`)
-        openFolder(config.currentLibraryPath)
+        SystemUtils.openInExplorer(config.currentLibraryPath)
         return
       }
+
 
       // Default behavior (set / init)
       let targetPath = action === 'set' ? path : action

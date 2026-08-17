@@ -1,9 +1,7 @@
 import * as p from '@clack/prompts'
-import { Orbit, FILE_FORMAT_REGISTRY, LibraryService, mapIGDBToGame, PathService, type FormatContext } from '@orbit/core'
+import { Orbit, FILE_FORMAT_REGISTRY, LibraryService, mapIGDBToGame, PathService, SystemUtils, type FormatContext } from '@orbit/core'
 import { join, extname, basename } from 'node:path'
 import { readdir, stat, access } from 'node:fs/promises'
-import { exec } from 'node:child_process'
-import { platform as osPlatform } from 'node:os'
 import { emitKeypressEvents } from 'node:readline'
 import { resolvePath, getSuggestedLibraryPath } from '../../paths'
 import { loadConfig } from '../../storage'
@@ -11,6 +9,7 @@ import { OperationBatch, CopyFileCommand, MoveFileCommand } from './operations'
 import { cleanStagingAction } from '../staging'
 import { formatResultForSelect } from '../ui-utils'
 import { gateway } from '../../index'
+
 
 export type MediaType = 'screenshot' | 'clip'
 
@@ -55,19 +54,6 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-/**
- * Opens a file using the system's default application.
- */
-function openFilePreview(filePath: string) {
-  const os = osPlatform()
-  if (os === 'win32') {
-    exec(`start "" "${filePath}"`)
-  } else if (os === 'darwin') {
-    exec(`open "${filePath}"`)
-  } else {
-    exec(`xdg-open "${filePath}"`)
-  }
-}
 
 /**
  * Shows a countdown prompt. If the user doesn't answer in time, it auto-accepts.
@@ -351,7 +337,7 @@ export async function importMediaAction(mediaType: MediaType, path?: string, isI
         groupResolved = true
       } else if (action === 'preview') {
         if (files.length === 1) {
-          openFilePreview(files[0].path)
+          SystemUtils.openInExplorer(files[0].path)
         } else {
           let previewing = true
           while (previewing) {
@@ -366,10 +352,11 @@ export async function importMediaAction(mediaType: MediaType, path?: string, isI
             if (p.isCancel(previewAction) || previewAction === 'back') {
               previewing = false
             } else {
-              openFilePreview(files[previewAction as number].path)
+              SystemUtils.openInExplorer(files[previewAction as number].path)
             }
           }
         }
+
         // Loop repeats
       } else if (action === 'skip') {
         const skipType = await p.select({
