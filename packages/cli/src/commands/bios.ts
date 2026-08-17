@@ -2,7 +2,8 @@ import type { CAC } from 'cac';
 import * as p from '@clack/prompts';
 import { Orbit, BiosService } from '@orbit/core';
 import { loadConfig } from '../storage';
-import { resolvePath, getSuggestedLibraryPath } from '../paths';
+import { resolvePath, getSuggestedPath } from '../paths';
+
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -44,12 +45,12 @@ export default function registerBios(cli: CAC) {
         let targetPath = path;
 
         if (!targetPath) {
-          const desktopPath = join(homedir(), 'Desktop');
           const response = await p.text({
             message: 'Enter source file or folder path containing BIOS file(s):',
-            initialValue: desktopPath,
+            initialValue: getSuggestedPath('import-source'),
             validate: (v) => v.trim().length === 0 ? 'Path is required' : undefined
           });
+
           if (p.isCancel(response)) process.exit(0);
           targetPath = String(response);
         }

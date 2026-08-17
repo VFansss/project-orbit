@@ -2,7 +2,7 @@ import { homedir, platform } from 'node:os'
 import { join, resolve } from 'node:path'
 
 /**
- * TODO: Resolve the base directory for Orbit data.
+ * Resolve the base directory for Orbit data.
  */
 const isWin = platform() === 'win32';
 const baseDir = isWin 
@@ -15,7 +15,7 @@ export const PATHS = {
 };
 
 /**
- * TODO: Expands ~/ to the user's home directory and resolves the path.
+ * Expands ~/ to the user's home directory and resolves the path.
  */
 export function resolvePath(input: string): string {
   let p = input;
@@ -25,12 +25,31 @@ export function resolvePath(input: string): string {
   return resolve(p);
 }
 
+export type SuggestedPathType = 'library' | 'import-source' | 'desktop' | 'downloads';
+
 /**
- * TODO: Provides a sensible default path for a new library based on the OS.
+ * Provides a sensible suggested path based on context type and OS.
+ */
+export function getSuggestedPath(type: SuggestedPathType = 'library'): string {
+  const home = homedir();
+  const isWin = platform() === 'win32';
+
+  switch (type) {
+    case 'library':
+      return isWin ? join(home, 'Documents', 'orbit-library') : join(home, 'orbit-library');
+    case 'import-source':
+    case 'desktop':
+      return join(home, 'Desktop');
+    case 'downloads':
+      return join(home, 'Downloads');
+    default:
+      return home;
+  }
+}
+
+/**
+ * Backward-compatible helper for library path creation suggestion.
  */
 export function getSuggestedLibraryPath(): string {
-  if (platform() === 'win32') {
-    return join(homedir(), 'Documents', 'orbit-library');
-  }
-  return join(homedir(), 'orbit-library');
+  return getSuggestedPath('library');
 }

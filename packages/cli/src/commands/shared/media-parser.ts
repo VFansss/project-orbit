@@ -3,7 +3,8 @@ import { Orbit, FILE_FORMAT_REGISTRY, LibraryService, mapIGDBToGame, PathService
 import { join, extname, basename } from 'node:path'
 import { readdir, stat, access } from 'node:fs/promises'
 import { emitKeypressEvents } from 'node:readline'
-import { resolvePath, getSuggestedLibraryPath } from '../../paths'
+import { resolvePath, getSuggestedPath } from '../../paths'
+
 import { loadConfig } from '../../storage'
 import { OperationBatch, CopyFileCommand, MoveFileCommand } from './operations'
 import { cleanStagingAction } from '../staging'
@@ -188,9 +189,10 @@ export async function importMediaAction(mediaType: MediaType, path?: string, isI
   if (!targetPath && isInteractive) {
     const response = await p.text({
       message: `Enter the source directory path for ${mConfig.displayName}:`,
-      initialValue: getSuggestedLibraryPath(),
+      initialValue: getSuggestedPath('import-source'),
       validate: (v) => v.length === 0 ? 'Path is required' : undefined
     })
+
     if (p.isCancel(response)) process.exit(0)
     targetPath = response as string
   }
