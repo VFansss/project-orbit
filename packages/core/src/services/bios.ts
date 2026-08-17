@@ -1,11 +1,15 @@
 import { join, basename } from 'node:path';
-import { readdir, mkdir } from 'node:fs/promises';
+import { readdir, mkdir, stat } from 'node:fs/promises';
 import { calculateFileHashes } from '../utils/hashing';
 import { ResourceManager } from '../resources/manager';
 import type { LibretroSystemBiosResourceHandler } from '../resources/definitions/libretro-system-bios';
 import type { OrbitConfig } from '../models/config';
 import type { BiosReferenceEntry } from '../resources/types';
 import { PlatformRegistry } from '../platforms';
+import type { IDataGateway } from '../gateway/types';
+
+const MAX_BIOS_FILE_SIZE_BYTES = 64 * 1024 * 1024; // 64 MB
+const KNOWN_BIOS_EXTENSIONS = new Set(['.bin', '.rom', '.pce', '.dat', '.bios', '.img', '.sfc', '.pbp', '.cue', '.iso']);
 
 export interface BiosImportResult {
   sourcePath: string;
@@ -31,15 +35,12 @@ export interface BiosVerifyReport {
   foundSha1?: string;
 }
 
-import type { IDataGateway } from '../gateway/types';
-
 export class BiosService {
   private resourceManager: ResourceManager;
 
   constructor(private config: OrbitConfig, gateway?: IDataGateway) {
     this.resourceManager = new ResourceManager(config, gateway);
   }
-
 
   private getLibraryRoot(): string {
     const root = this.config.currentLibraryPath;
@@ -78,17 +79,13 @@ export class BiosService {
 
   /**
    * Imports a BIOS binary file or a directory of BIOS files.
-   * - BIOS files MUST match by HASH (SHA1, MD5, CRC32) against DAT index.
-   * - Loose filename includes ("1000") is disabled to prevent non-BIOS file collisions.
-   * - Curated platforms (ps1, gba, pc, etc.) are placed in Bios/<platform>/<filename>.
-   * - Un-curated platforms are NOT moved/staged: reported as explicit warning, left untouched.
-   * - Unidentified files are IGNORED (left untouched) and reported.
-   * - Already existing identical files are skipped without overwriting.
-   * - Writes .crc32, .md5, .sha1, and .sha256 sidecar files into checksum/.
+   * - Strict HASH matching (SHA1, MD5, CRC32) against DAT index.
+   * - Curated platforms (ps1, gba, etc.) are placed in Bios/<platform>/<filename>.
+   * - Writes .crc32, .md5, .sha1, and .sha256 sidecars into Bios/<platform>/checksum/.
    */
   public async importBios(
     sourcePath: string,
-    options?: { copy?: boolean; platformFallback?: string; force?: boolean; recursive?: boolean; allowFilenameFallback?: boolean }
+    options?: { copy?: boolean; platformFallback?: string; force?: boolean; recursive?: boolean; allowFilenameFallback?: boolean; scanZip?: boolean }
   ): Promise<BiosImportResult[]> {
     const handler = await this.getBiosHandler();
     const libraryRoot = this.getLibraryRoot();
@@ -98,7 +95,6 @@ export class BiosService {
     const isSingleFile = await file.exists();
 
     let filesToProcess: string[] = [];
-
     if (isSingleFile) {
       filesToProcess.push(sourcePath);
     } else {
@@ -111,28 +107,56 @@ export class BiosService {
 
     for (const filePath of filesToProcess) {
       const origName = basename(filePath);
-      
-      // Calculate all hashes in single streaming pass
-      const resList = await calculateFileHashes(filePath);
+      const dotIdx = origName.lastIndexOf('.');
+      const ext = dotIdx !== -1 ? origName.substring(dotIdx).toLowerCase() : '';
+
+      // Fast check: extension whitelist, zip flag, and max file size (64MB)
+      const isAllowedExt = ext === '.zip' ? !!options?.scanZip : (ext === '' || KNOWN_BIOS_EXTENSIONS.has(ext));
+      const fileStat = isAllowedExt ? await stat(filePath).catch(() => null) : null;
+
+      if (!fileStat || fileStat.size > MAX_BIOS_FILE_SIZE_BYTES) {
+        results.push({
+          sourcePath: filePath,
+          filename: origName,
+          platform: 'unknown',
+          identified: false,
+          isSupportedPlatform: false,
+          crc32: '', md5: '', sha1: '', sha256: '',
+          actionTaken: 'ignored_unidentified'
+        });
+        continue;
+      }
+
+      // Calculate hashes with resilience against locked/corrupted files
+      const resList = await calculateFileHashes(filePath, ['crc32', 'md5', 'sha1', 'sha256'], false, options?.scanZip).catch(() => []);
+      if (resList.length === 0) {
+        results.push({
+          sourcePath: filePath,
+          filename: origName,
+          platform: 'unknown',
+          identified: false,
+          isSupportedPlatform: false,
+          crc32: '', md5: '', sha1: '', sha256: '',
+          actionTaken: 'ignored_unidentified'
+        });
+        continue;
+      }
+
       const hashes = resList[0]?.hashes || {};
       const sha1 = hashes.sha1 || '';
       const md5 = hashes.md5 || '';
       const crc32 = hashes.crc32 || '';
       const sha256 = hashes.sha256 || '';
 
-      // Lookup strictly by HASH in Libretro System BIOS DAT
+      // Lookup strictly by HASH in Libretro System BIOS DAT (SHA1 -> MD5 -> CRC32)
       let matchMethod: 'sha1' | 'md5' | 'crc32' | 'filename' | undefined;
-      let matchedEntry = await handler.lookupByHash(sha1);
-      if (matchedEntry) matchMethod = 'sha1';
-
-      if (!matchedEntry && md5) {
-        matchedEntry = await handler.lookupByHash(md5);
-        if (matchedEntry) matchMethod = 'md5';
-      }
-
-      if (!matchedEntry && crc32) {
-        matchedEntry = await handler.lookupByHash(crc32);
-        if (matchedEntry) matchMethod = 'crc32';
+      let matchedEntry: BiosReferenceEntry | null = (sha1 ? await handler.lookupByHash(sha1) : null);
+      if (matchedEntry) {
+        matchMethod = 'sha1';
+      } else if (md5 && (matchedEntry = await handler.lookupByHash(md5))) {
+        matchMethod = 'md5';
+      } else if (crc32 && (matchedEntry = await handler.lookupByHash(crc32))) {
+        matchMethod = 'crc32';
       }
 
       // Optional fallback: Match ONLY if exact filename match AND explicitly allowed
@@ -146,8 +170,6 @@ export class BiosService {
       }
 
       const identified = !!matchedEntry;
-
-      // Case 3: Completely unidentified file - Ignore completely, leave untouched!
       if (!identified) {
         results.push({
           sourcePath: filePath,
@@ -155,10 +177,7 @@ export class BiosService {
           platform: 'unknown',
           identified: false,
           isSupportedPlatform: false,
-          crc32,
-          md5,
-          sha1,
-          sha256,
+          crc32, md5, sha1, sha256,
           actionTaken: 'ignored_unidentified'
         });
         continue;
@@ -171,7 +190,6 @@ export class BiosService {
       const targetFilename = matchedEntry.filename || origName;
 
       if (!isSupportedPlatform) {
-        // Case 2: Recognized BIOS but platform NOT curated in Orbit -> DO NOT MOVE, DO NOT STAGE, just warn!
         results.push({
           sourcePath: filePath,
           filename: targetFilename,
@@ -180,30 +198,23 @@ export class BiosService {
           isSupportedPlatform: false,
           matchedEntry,
           matchMethod,
-          crc32,
-          md5,
-          sha1,
-          sha256,
+          crc32, md5, sha1, sha256,
           actionTaken: 'warn_unsupported_platform'
         });
         continue;
       }
 
-      // Case 1: Curated Platform -> Bios/<platform>/
-      const biosDir = join(libraryRoot, 'Bios', platform);
-      const checksumDir = join(biosDir, 'checksum');
-      const targetPath = join(biosDir, targetFilename);
+      // Curated destination: Bios/<platform>/<filename>
+      const platformDir = join(libraryRoot, 'Bios', platform);
+      const checksumDir = join(platformDir, 'checksum');
+      await mkdir(checksumDir, { recursive: true });
 
-      const existingFile = Bun.file(targetPath);
-      if ((await existingFile.exists()) && !options?.force) {
-        // Check if existing file has identical SHA1
-        const sha1File = Bun.file(join(checksumDir, `${targetFilename}.sha1`));
-        let existingSha1 = '';
-        if (await sha1File.exists()) {
-          existingSha1 = (await sha1File.text()).trim().toLowerCase();
-        }
+      const destPath = join(platformDir, targetFilename);
+      const destFile = Bun.file(destPath);
 
-        if (existingSha1 === sha1.toLowerCase() || existingSha1 === '') {
+      if (await destFile.exists() && !options?.force) {
+        const destHashes = await calculateFileHashes(destPath);
+        if (destHashes[0]?.hashes?.sha1 === sha1) {
           results.push({
             sourcePath: filePath,
             filename: targetFilename,
@@ -212,38 +223,27 @@ export class BiosService {
             isSupportedPlatform: true,
             matchedEntry,
             matchMethod,
-            targetPath,
-            crc32,
-            md5,
-            sha1,
-            sha256,
+            targetPath: destPath,
+            crc32, md5, sha1, sha256,
             actionTaken: 'skipped_already_exists'
           });
           continue;
         }
       }
 
-      await mkdir(biosDir, { recursive: true });
-      await mkdir(checksumDir, { recursive: true });
+      // Write sidecar checksum files
+      if (sha1) await Bun.write(join(checksumDir, `${targetFilename}.sha1`), sha1);
+      if (md5) await Bun.write(join(checksumDir, `${targetFilename}.md5`), md5);
+      if (crc32) await Bun.write(join(checksumDir, `${targetFilename}.crc32`), crc32);
+      if (sha256) await Bun.write(join(checksumDir, `${targetFilename}.sha256`), sha256);
 
-      const sourceFile = Bun.file(filePath);
-      await Bun.write(targetPath, sourceFile);
-
-      // Write checksum files according to Orbit Hashing standard (.sha1, .md5, .crc32, .sha256)
-      await Bun.write(join(checksumDir, `${targetFilename}.sha1`), sha1);
-      await Bun.write(join(checksumDir, `${targetFilename}.md5`), md5);
-      if (crc32) {
-        await Bun.write(join(checksumDir, `${targetFilename}.crc32`), crc32);
-      }
-      if (sha256) {
-        await Bun.write(join(checksumDir, `${targetFilename}.sha256`), sha256);
-      }
-
-      const isCopyDefault = options?.copy !== false;
-
-      if (!isCopyDefault && filePath !== targetPath) {
-        const { rm } = await import('node:fs/promises');
-        await rm(filePath, { force: true });
+      // Perform file import: default is COPY (safety first)
+      if (options?.copy === false) {
+        await Bun.write(destPath, await Bun.file(filePath).arrayBuffer());
+        const { unlink } = await import('node:fs/promises');
+        await unlink(filePath);
+      } else {
+        await Bun.write(destPath, await Bun.file(filePath).arrayBuffer());
       }
 
       results.push({
@@ -254,11 +254,8 @@ export class BiosService {
         isSupportedPlatform: true,
         matchedEntry,
         matchMethod,
-        targetPath,
-        crc32,
-        md5,
-        sha1,
-        sha256,
+        targetPath: destPath,
+        crc32, md5, sha1, sha256,
         actionTaken: 'imported'
       });
     }
@@ -267,7 +264,7 @@ export class BiosService {
   }
 
   /**
-   * Verifies existing BIOS files in Bios/<platform>/ against checksums and DAT entries.
+   * Verifies installed BIOS files against their stored sidecar checksums.
    */
   public async verifyBios(targetPlatform?: string): Promise<BiosVerifyReport[]> {
     const handler = await this.getBiosHandler();
@@ -290,8 +287,6 @@ export class BiosService {
 
     for (const plat of platformsToScan) {
       const platDir = join(biosBaseDir, plat);
-      const checksumDir = join(platDir, 'checksum');
-
       let files: string[] = [];
       try {
         const entries = await readdir(platDir, { withFileTypes: true });
@@ -300,26 +295,36 @@ export class BiosService {
         continue;
       }
 
-      for (const fileName of files) {
-        const filePath = join(platDir, fileName);
-        const resList = await calculateFileHashes(filePath);
-        const hashes = resList[0]?.hashes || {};
+      for (const fn of files) {
+        const filePath = join(platDir, fn);
+        const sha1Sidecar = join(platDir, 'checksum', `${fn}.sha1`);
 
-        // Read stored checksum
-        const sha1File = Bun.file(join(checksumDir, `${fileName}.sha1`));
         let expectedSha1: string | undefined;
-        if (await sha1File.exists()) {
-          expectedSha1 = (await sha1File.text()).trim().toLowerCase();
+        try {
+          const sFile = Bun.file(sha1Sidecar);
+          if (await sFile.exists()) {
+            expectedSha1 = (await sFile.text()).trim();
+          }
+        } catch {}
+
+        if (!expectedSha1) {
+          const match = await handler.query({ filename: fn });
+          if (match.matched && match.results[0]?.sha1) {
+            expectedSha1 = match.results[0].sha1;
+          }
         }
 
-        const isCorrupted = (expectedSha1 && hashes.sha1) ? expectedSha1 !== hashes.sha1.toLowerCase() : false;
+        const resList = await calculateFileHashes(filePath);
+        const actualSha1 = resList[0]?.hashes?.sha1 || '';
+
+        const isValid = expectedSha1 ? (actualSha1.toLowerCase() === expectedSha1.toLowerCase()) : true;
 
         reports.push({
           platform: plat,
-          filename: fileName,
-          status: isCorrupted ? 'corrupted' : 'valid',
+          filename: fn,
+          status: isValid ? 'valid' : 'corrupted',
           expectedSha1,
-          foundSha1: hashes.sha1
+          foundSha1: actualSha1
         });
       }
     }

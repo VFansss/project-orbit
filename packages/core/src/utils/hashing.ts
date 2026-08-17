@@ -150,7 +150,8 @@ function hashZipEntries(filePath: string, algorithms: HashAlgorithm[]): Promise<
 export async function calculateFileHashes(
   filePath: string, 
   algorithms: HashAlgorithm[] = ['crc32', 'md5', 'sha1', 'sha256'],
-  allowLargeFiles: boolean = false
+  allowLargeFiles: boolean = false,
+  scanZip: boolean = false
 ): Promise<HashResult[]> {
   
   const stats = await stat(filePath);
@@ -160,7 +161,7 @@ export async function calculateFileHashes(
     throw new Error(`File is too large (${sizeGB.toFixed(2)} GB). Safety block active. Use the correct flag to allow large files.`);
   }
 
-  if (filePath.toLowerCase().endsWith('.zip')) {
+  if (scanZip && filePath.toLowerCase().endsWith('.zip')) {
     return await hashZipEntries(filePath, algorithms);
   } else {
     // Normal file
@@ -173,3 +174,4 @@ export async function calculateFileHashes(
     }];
   }
 }
+

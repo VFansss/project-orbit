@@ -31,10 +31,12 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
   cli.command('bios [action] [path]', 'Manage system BIOS and firmware (import, verify)')
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('-v, --verbose', 'Show detailed list of all ignored files', { default: false })
+    .option('--scan-zip', 'Scan inside .zip archives for BIOS files', { default: false })
     .option('--copy', 'Copy files to library (default)', { default: true })
     .option('--move', 'Move files instead of copying them', { default: false })
     .option('--force', 'Force overwrite existing BIOS files', { default: false })
     .option('--platform <platform>', 'Specify or fallback platform name')
+
 
 
     .action(async (rawAction?: any, rawPath?: any, flags?: any) => {
@@ -93,15 +95,15 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
           s.start(`Scanning source directory RECURSIVELY at "${absolutePath}"...`);
         } else {
           s.start(`Scanning top-level files at "${absolutePath}" (pass -r/--recursive for subfolders)...`);
-        }
-
-        try {
+        }        try {
           const shouldCopy = options.move ? false : (options.copy !== false);
+          const shouldScanZip = !!(options['scan-zip'] || options.scanZip);
           const results = await biosService.importBios(absolutePath, {
             copy: shouldCopy,
             force: options.force,
             recursive: isRecursive,
-            platformFallback: options.platform
+            platformFallback: options.platform,
+            scanZip: shouldScanZip
           });
 
           s.stop(`Import finished. Processed ${results.length} file(s).`);
@@ -131,7 +133,6 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
             console.log('');
           }
 
-
           // 2. Warnings (Un-curated platforms)
           for (const res of warned) {
             console.log(`\x1b[33m[! Warning]\x1b[0m  \x1b[1m${res.filename}\x1b[0m \x1b[33m(Matched platform "${res.platform}", which is not currently curated - Left untouched)\x1b[0m`);
@@ -160,9 +161,14 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
             console.log('\x1b[36m[Note]\x1b[0m Files were \x1b[1mcopied\x1b[0m to library (source files left untouched). Use \x1b[1m--move\x1b[0m to move files.');
           }
 
+          if (!shouldScanZip) {
+            console.log('\x1b[33m[! Note]\x1b[0m ZIP archives are skipped by default. Use \x1b[1m--scan-zip\x1b[0m to scan inside .zip files.');
+          }
+
           console.log(`\x1b[32mSuccess!\x1b[0m Imported \x1b[1m${imported.length}\x1b[0m BIOS file(s).`);
 
         } catch (err: any) {
+
           s.stop('Import failed.', 1);
           console.error(`\x1b[31mError:\x1b[0m ${err.message}`);
           process.exit(1);

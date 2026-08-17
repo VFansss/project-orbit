@@ -50,8 +50,9 @@ export class LibretroSystemBiosResourceHandler implements OrbitResourceHandler {
     } catch {
       return [];
     }
-
   }
+
+
 
   /**
    * Looks up a BIOS entry by hash (CRC32, MD5, or SHA1, case-insensitive).
