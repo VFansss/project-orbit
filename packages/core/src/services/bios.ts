@@ -85,7 +85,7 @@ export class BiosService {
    */
   public async importBios(
     sourcePath: string,
-    options?: { copy?: boolean; platformFallback?: string; force?: boolean; recursive?: boolean; allowFilenameFallback?: boolean; scanZip?: boolean }
+    options?: { copy?: boolean; platformFallback?: string; force?: boolean; recursive?: boolean; allowFilenameFallback?: boolean; scanZip?: boolean; importUnknown?: boolean }
   ): Promise<BiosImportResult[]> {
     const handler = await this.getBiosHandler();
     const libraryRoot = this.getLibraryRoot();
@@ -185,11 +185,11 @@ export class BiosService {
 
       const rawPlatform = matchedEntry.platform || options?.platformFallback || 'unknown';
       const resolvedSlug = PlatformRegistry.resolveSlug(rawPlatform);
-      const platform = resolvedSlug || rawPlatform;
       const isSupportedPlatform = !!resolvedSlug;
-      const targetFilename = matchedEntry.filename || origName;
+      const targetFilename = origName;
 
-      if (!isSupportedPlatform) {
+
+      if (!isSupportedPlatform && !options?.importUnknown) {
         results.push({
           sourcePath: filePath,
           filename: targetFilename,
@@ -204,7 +204,9 @@ export class BiosService {
         continue;
       }
 
-      // Curated destination: Bios/<platform>/<filename>
+      const platform = isSupportedPlatform ? resolvedSlug : 'unknown';
+
+      // Destination: Bios/<platform>/<filename>
       const platformDir = join(libraryRoot, 'Bios', platform);
       const checksumDir = join(platformDir, 'checksum');
       await mkdir(checksumDir, { recursive: true });
@@ -220,7 +222,7 @@ export class BiosService {
             filename: targetFilename,
             platform,
             identified: true,
-            isSupportedPlatform: true,
+            isSupportedPlatform,
             matchedEntry,
             matchMethod,
             targetPath: destPath,
@@ -251,7 +253,7 @@ export class BiosService {
         filename: targetFilename,
         platform,
         identified: true,
-        isSupportedPlatform: true,
+        isSupportedPlatform,
         matchedEntry,
         matchMethod,
         targetPath: destPath,
@@ -259,6 +261,7 @@ export class BiosService {
         actionTaken: 'imported'
       });
     }
+
 
     return results;
   }

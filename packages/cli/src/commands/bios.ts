@@ -32,10 +32,12 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
     .option('-r, --recursive', 'Scan source directory recursively', { default: false })
     .option('-v, --verbose', 'Show detailed list of all ignored files', { default: false })
     .option('--scan-zip', 'Scan inside .zip archives for BIOS files', { default: false })
+    .option('--get-unknown', 'Import recognized BIOS of uncurated platforms into Bios/unknown', { default: false })
     .option('--copy', 'Copy files to library (default)', { default: true })
     .option('--move', 'Move files instead of copying them', { default: false })
     .option('--force', 'Force overwrite existing BIOS files', { default: false })
     .option('--platform <platform>', 'Specify or fallback platform name')
+
 
 
 
@@ -98,12 +100,14 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
         }        try {
           const shouldCopy = options.move ? false : (options.copy !== false);
           const shouldScanZip = !!(options['scan-zip'] || options.scanZip);
+          const shouldImportUnknown = !!(options['get-unknown'] || options['get-unknow'] || options.getUnknown);
           const results = await biosService.importBios(absolutePath, {
             copy: shouldCopy,
             force: options.force,
             recursive: isRecursive,
             platformFallback: options.platform,
-            scanZip: shouldScanZip
+            scanZip: shouldScanZip,
+            importUnknown: shouldImportUnknown
           });
 
           s.stop(`Import finished. Processed ${results.length} file(s).`);
@@ -140,6 +144,10 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
             console.log(`  \x1b[2mSHA1: ${res.sha1}\x1b[0m\n`);
           }
 
+          if (warned.length > 0 && !shouldImportUnknown) {
+            console.log('\x1b[33m[! Note]\x1b[0m Uncurated platform BIOSes were left untouched. Use \x1b[1m--get-unknown\x1b[0m to import them into Bios/unknown/.\n');
+          }
+
           // 3. Skipped (Already existing identical BIOS)
           for (const res of skipped) {
             console.log(`\x1b[36m[= Skipped]\x1b[0m  \x1b[1m${res.filename}\x1b[0m \x1b[2m(Already exists in Bios/${res.platform}/ with matching hash)\x1b[0m`);
@@ -166,6 +174,7 @@ export default function registerBios(cli: CAC, gateway: IDataGateway) {
           }
 
           console.log(`\x1b[32mSuccess!\x1b[0m Imported \x1b[1m${imported.length}\x1b[0m BIOS file(s).`);
+
 
         } catch (err: any) {
 
