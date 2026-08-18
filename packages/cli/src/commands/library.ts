@@ -8,11 +8,29 @@ import { resolvePath, getSuggestedLibraryPath } from '../paths'
 
 export default (cli: CAC) => {
   cli
-    .command('library [action] [path]', 'Manage the library directory (set, init, open)')
+    .command('library [action] [path]', 'Manage the library directory (status, open, set, init)')
+
     .action(async (action?: string, path?: string) => {
+      const config = await loadConfig()
+
+      // Handle 'status' or 'info'
+      if (action === 'status' || action === 'info') {
+        if (!config.currentLibraryPath) {
+          console.log('\x1b[33mNo active library configured.\x1b[0m Run "orbit library" or "orbit init" to create one.')
+          return
+        }
+        const markerExists = await Bun.file(join(config.currentLibraryPath, LIBRARY_MARKER)).exists()
+        const user = Orbit.state.user.isLoggedIn ? Orbit.state.user.id : (config.currentUser || 'anonymous')
+        console.log('\n\x1b[34m--- Orbit Library Status ---\x1b[0m\n')
+        console.log(`  \x1b[1mPath:\x1b[0m    ${config.currentLibraryPath}`)
+        console.log(`  \x1b[1mMarker:\x1b[0m  ${markerExists ? '\x1b[32mValid (' + LIBRARY_MARKER + ')\x1b[0m' : '\x1b[31mMissing (' + LIBRARY_MARKER + ')\x1b[0m'}`)
+        console.log(`  \x1b[1mUser:\x1b[0m    \x1b[32m${user}\x1b[0m\n`)
+        return
+      }
+
+
       // Handle the 'open' action specifically
       if (action === 'open') {
-        const config = await loadConfig()
         if (!config.currentLibraryPath) {
           console.error(`\x1b[31mError:\x1b[0m No active library. Please initialize one first using 'orbit library'.`)
           process.exit(1)
@@ -23,9 +41,9 @@ export default (cli: CAC) => {
         return
       }
 
-
       // Default behavior (set / init)
-      let targetPath = action === 'set' ? path : action
+      let targetPath = (action === 'set' || action === 'init') ? path : action
+
       
       if (!targetPath) {
         p.intro('\x1b[34mLibrary Setup\x1b[0m')
@@ -65,8 +83,8 @@ export default (cli: CAC) => {
         }
       }
 
-      const config = await loadConfig()
       config.currentLibraryPath = absolutePath
+
       await saveConfig(config)
       Orbit.updateLibrary(absolutePath)
       console.log(`\x1b[32mSuccess!\x1b[0m Library active at: ${absolutePath}`)
