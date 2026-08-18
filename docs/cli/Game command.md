@@ -1,27 +1,35 @@
 # Game command
 
-Il comando "game" da modo di lavorare con i "media" di tipo "game".
+The `game` command provides tooling to work with game media assets.
 
-All'avvio, se non ci sono parametri extra, fa uscire un menù interattivo per scegliere i sotto-comandi disponibili.
+When invoked without sub-commands or flags, it displays an interactive prompt allowing the user to select from available sub-commands.
 
 ## import
 
-Il sotto-comando import serve, similmente a quella "screenshot", per "importare" nella libreria locale dei game.
+The `import` sub-command serves, similarly to screenshots and clips, to import games into the local Orbit library.
 
-Come prima cosa, c'è bisogno di passare la "platform". E' possibile passarla anche grazie al comando "--platform". Se il parametro non esiste, fa uscire (cosi come screenshot) un selettore. delle piattaforme supportate. E' possibile recuperarle da "\core" grazie al metodo relativo.
+### Workflow & Parameters
 
-Inserire anche una voce "Nessuna di queste / Piattaforma non supportata nell'elenco". Se si, mostri semplicemente un messaggio: "Non hai bisogno di import per organizzare la tua libreria: crea una cartella col nome che preferisci dentro "Game" e organizza i tuoi file come preferisci"
+1. **Platform Selection:**
+   - First, the target `platform` is required. It can be passed via the `--platform <name>` flag.
+   - If the parameter is omitted, an interactive selector displays the supported platforms (queried directly from `@orbit/core`).
+   - The selector includes an option: *"None of these / Unsupported platform"*. If selected, Orbit displays an informative message: *"You do not need the import command to organize your library: simply create a folder with your preferred name inside `Game/` and manage your files as you like."*
 
-Una volta scelto, chiedere la cartella da dove leggere le cose. Chiedere anche se analizzare ricorsivamente i file.
+2. **Source Directory & Recursion:**
+   - Next, prompt for the source file or directory path containing the games to import.
+   - Ask whether to scan recursively through subfolders.
 
-Dal momento che so la platform, posso leggere dall'oggetto di config i "formati" utili. Nella definizione della platform, ci deve essere un flag che dice "prendi solo i formati precisi nella definizione" e.g. gba per Gameboy, .nes per NES. Quel flag dovrà essere falso per il PC per esempio perchè li purtroppo dobbiamo essere più elastici (per esempio tanti dump o repack hanno si un .exe per installarli, ma anche altri file che però ci dobbiamo portare dietro). In tal caso, ogni madre dove trovi un "formato compatibile" (e.g. zip, exe o altro) prendi tutti i file "non riconosciuti" e, li elenchi a video e li importi. Se quel flag invece è falso, prendi solamente i file che rispondono ai "file format" supportati.
+3. **Platform File Format Rules:**
+   - Once the platform is known, Orbit retrieves its supported file extensions and ingestion rules from the configuration and platform definition.
+   - Platform definitions include a flag indicating whether to strictly enforce format filtering (e.g., `.gba` for Game Boy Advance, `.nes` for NES):
+     - **Strict Platforms (Consoles/Handhelds):** Only files matching curated platform extensions are processed and imported.
+     - **Elastic Platforms (PC):** Set to `false` for PC games, where directories contain `.exe` / installers alongside dependencies, data files, and repack assets. For any parent folder containing a compatible executable format, all accompanying unrecognized files within that directory are cataloged, listed, and imported together.
 
-A questo punto abbiamo:
+### Summary of Context
+At this stage, Orbit has:
+- Target Platform
+- Source Directory Path
+- Platform Definition & Format Rules
 
-- Piattaforma
-- Directory
-- Info sulla piattaforma (e relativi file supportati ecc)
-  
-Possiamo partire.
-
-Ricorda che in ogni caso stiamo usando la "_staging" folder per spostare i file dal source -> staging e solo alla fine eventualmente applicare le modifiche e portarli verso la libreria vera e propria, similmente a come viene fatto per clip e screenshot
+### Staging Architecture
+Remember that Orbit leverages the `_staging` folder pattern: files are safely copied or moved from `source -> _staging`, and only after processing/conversion are they committed into the main library structure, consistent with the workflow used for screenshots and gameplay clips.
