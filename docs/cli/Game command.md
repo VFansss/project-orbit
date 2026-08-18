@@ -13,7 +13,7 @@ The `import` sub-command serves, similarly to screenshots and clips, to import g
 1. **Platform Selection:**
    - First, the target `platform` is required. It can be passed via the `--platform <name>` flag.
    - If the parameter is omitted, an interactive selector displays the supported platforms (queried directly from `@orbit/core`).
-   - The selector includes an option: *"None of these / Unsupported platform"*. If selected, Orbit displays an informative message: *"You do not need the import command to organize your library: simply create a folder with your preferred name inside `Game/` and manage your files as you like."*
+   - The selector includes an option: *"None of these / Unsupported platform"*. If selected, Orbit displays an informative message: *"You do not need the import command to organize your library: simply create a folder with your preferred name inside `Game/<platform name>` and manage your files as you like."*
 
 2. **Source Directory & Recursion:**
    - Next, prompt for the source file or directory path containing the games to import.

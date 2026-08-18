@@ -70,19 +70,24 @@ async function main() {
       if (cmdsIndex !== -1) {
         const bodyLines = sections[cmdsIndex].body.split('\n')
         
-        const getCmds = (prefixes: string[]) => bodyLines.filter(line => prefixes.some(p => line.trim().startsWith(p))).join('\n')
+        const getCmds = (prefixes: string[]) => 
+          prefixes
+            .map(p => bodyLines.find(line => line.trim().startsWith(p)))
+            .filter((line): line is string => Boolean(line))
+            .join('\n')
+
 
         const setup = getCmds(['login', 'library', 'config'])
+        const myMedia = getCmds(['game', 'bios', 'screenshot', 'clip'])
         const myLibrary = getCmds(['status', 'search'])
-        const myMedia = getCmds(['screenshot', 'clip'])
-        const maintenance = getCmds(['staging', 'hash', 'resource', 'bios'])
+        const utils = getCmds(['hash', 'resource', 'staging'])
 
 
         sections.splice(cmdsIndex, 1,
           { title: '\x1b[35mSetup\x1b[0m', body: setup },
-          { title: '\x1b[36mMy Library\x1b[0m', body: myLibrary },
           { title: '\x1b[32mMy Media\x1b[0m', body: myMedia },
-          { title: '\x1b[33mMaintenance\x1b[0m', body: maintenance }
+          { title: '\x1b[36mMy Library\x1b[0m', body: myLibrary },
+          { title: '\x1b[33mUtils\x1b[0m', body: utils }
         )
       }
 
