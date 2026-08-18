@@ -1,35 +1,121 @@
 # Game command
 
-The `game` command provides tooling to work with game media assets.
+The `game` command manages, imports, and verifies game binaries and accompanying assets for the various platforms supported by Orbit.
 
-When invoked without sub-commands or flags, it displays an interactive prompt allowing the user to select from available sub-commands.
+All files are stored inside the `Games/` folder of the active library, following the "Just-in-Time" (JIT) folder creation convention (directories are only created when needed).
 
-## import
+When invoked without positional arguments or flags, it displays an interactive prompt allowing the user to select between available actions (`import` or `verify`).
 
-The `import` sub-command serves, similarly to screenshots and clips, to import games into the local Orbit library.
+```bash
+# Interactive mode
+bun orbit game
 
-### Workflow & Parameters
+# Direct sub-commands
+bun orbit game import [path] [--platform <slug>] [--mode <auto|scaffold>]
+bun orbit game verify [platform]
+```
 
-1. **Platform Selection:**
-   - First, the target `platform` is required. It can be passed via the `--platform <name>` flag.
-   - If the parameter is omitted, an interactive selector displays the supported platforms (queried directly from `@orbit/core`).
-   - The selector includes an option: *"None of these / Unsupported platform"*. If selected, Orbit displays an informative message: *"You do not need the import command to organize your library: simply create a folder with your preferred name inside `Game/<platform name>` and manage your files as you like."*
+---
 
-2. **Source Directory & Recursion:**
-   - Next, prompt for the source file or directory path containing the games to import.
-   - Ask whether to scan recursively through subfolders.
+## 1. Platform Ingestion Policy (`scaffold_mode`)
 
-3. **Platform File Format Rules:**
-   - Once the platform is known, Orbit retrieves its supported file extensions and ingestion rules from the configuration and platform definition.
-   - Platform definitions include a flag indicating whether to strictly enforce format filtering (e.g., `.gba` for Game Boy Advance, `.nes` for NES):
-     - **Strict Platforms (Consoles/Handhelds):** Only files matching curated platform extensions are processed and imported.
-     - **Elastic Platforms (PC):** Set to `false` for PC games, where directories contain `.exe` / installers alongside dependencies, data files, and repack assets. For any parent folder containing a compatible executable format, all accompanying unrecognized files within that directory are cataloged, listed, and imported together.
+Platforms define how game content is ingested via the `scaffold_mode` property:
 
-### Summary of Context
-At this stage, Orbit has:
-- Target Platform
-- Source Directory Path
-- Platform Definition & Format Rules
+- **`forced` (e.g. `pc`):** The Assisted Intake (Scaffold) workflow is mandatory. PC games consist of complex, heterogeneous files (ISOs, multi-part installers, manuals, patches, fixes) that require structured folder assembly.
+- **`choose` (e.g. `gba`, `nes`, `ps1`):** Defaults to automated batch ROM scanning, but allows the user to opt into the Scaffold wizard (via interactive prompt or `--mode scaffold`) to assemble rich retro game bundles with manuals, fan translations, and community patches.
+- **`disabled`:** Pure direct autoscan for platforms where only raw ROM dumps are accepted.
 
-### Staging Architecture
-Remember that Orbit leverages the `_staging` folder pattern: files are safely copied or moved from `source -> _staging`, and only after processing/conversion are they committed into the main library structure, consistent with the workflow used for screenshots and gameplay clips.
+---
+
+## 2. Pre-flight Staging Hygiene
+
+Before initiating any import session, Orbit **automatically and silently purges** any residual files from `_Staging/Games/<platform>/`. This ensures a 100% clean, uncontaminated workspace for the current session.
+
+---
+
+## 3. `import`
+
+The `import` sub-command imports games into the local Orbit library using either the **Assisted Intake (Scaffold)** engine or the **Automated Batch Ingestion** engine based on platform and options.
+
+### 3.1 Assisted Intake (Scaffold) Workflow
+
+Used for PC games and rich retro packages.
+
+#### Phase 1: One-by-One Intake Loop
+For each game the user wishes to ingest:
+
+1. **Identification & Search:**  
+   The user inputs a game title. Orbit queries `@orbit/core` service-level search (`LibraryService.resolve` combining IGDB and local library cache) and displays interactive matching candidates. Selecting a candidate automatically locks in the canonical `Name (Year)` and metadata IDs. (A manual entry option is always available).
+2. **Staging Preparation:**  
+   Orbit prepares a clean staging workspace in `_Staging/Games/<platform>/<Game Name (Year)>/` populated with standard special subfolders:
+   ```text
+   _Staging/Games/<platform>/<Game Name (Year)>/
+   ├── Manual/                  # User manuals, guides, maps (PDF, TXT, JPG)
+   ├── Patch/                   # Official updates and patches
+   ├── Fix/                     # Community fixes, widescreen mods, wrappers (dgVoodoo)
+   ├── Translation/             # Language translations and conversion tools
+   ├── NoCD/                    # No-CD executables & preservation bypasses
+   ├── DLC/                     # Expansions, add-on packs, extra content
+   ├── Extra/                   # Wallpapers, soundtracks, artworks, avatars
+   ├── Serial/                  # Activation keys / CD-Keys
+   │   └── _insert_game_keys_here.txt
+   └── _installed_game_folder/  # Drop loose/unpacked directories here for auto-zipping
+   ```
+3. **Explorer Launch & User Placement:**  
+   Orbit launches the system file explorer (`SystemUtils.openInExplorer`) at the prepared staging directory and prompts:  
+   *"Paste your files for `<Game Name (Year)>`. Press [Enter] when done."*
+4. **Next Game Prompt:**  
+   Orbit asks: *"Do you want to import another game? [y/N]"*.  
+   - If **Yes**, repeats steps 1–3 for the next title.
+   - If **No**, completes the intake phase and proceeds to batch processing.
+
+#### Phase 2: Batch Processing & Commit
+Orbit processes all prepared games in staging in a single, automated batch:
+
+1. **Auto-Zipping Unpacked Directories:**  
+   If `_installed_game_folder/` contains files, Orbit prompts for an optional edition name (default: `[Game Data]` or game name) and compresses it into a fast `.zip` archive, deleting the temporary unpacked folder.
+2. **CD-Key Handling:**  
+   Orbit inspects `Serial/_insert_game_keys_here.txt`. If populated with actual keys, it saves it cleanly as `Serial/keys.txt`. If left empty/untouched, the template file (and empty `Serial/` folder) is deleted.
+3. **Empty Folder Sanitization:**  
+   Orbit deletes all unused/empty special subfolders, ignoring OS metadata (`desktop.ini`, `Thumbs.db`, `.DS_Store`).
+4. **On-Demand Checksum Generation:**  
+   Computes SHA256 (for PC binaries/ISOs) or SHA1 (for retro disc media) into `checksum/<filename>.<algo>`. (ZIP archives are not re-hashed).
+5. **Atomic Commit & Metadata Generation:**  
+   Moves the clean game folder from `_Staging/Games/<platform>/` to `Games/<platform>/<Game Name (Year)>/` and writes the canonical metadata file in [`Metadata/<platform>/<Game Name (Year)>/metadata.toml`](../orbit-library/Metadata.md).
+
+
+---
+
+### 3.2 Automated Batch Ingestion Workflow
+
+Used for rapid multi-ROM scanning (GBA, NES, SNES, PS1 ISOs/CHDs).
+
+1. Prompts for source path and optional recursion flag (`-r, --recursive`).
+2. Scans files matching curated platform extensions.
+3. Stages candidate files in `_Staging/Games/<platform>/<Game Name>/`.
+4. Computes required checksums into `checksum/`.
+5. Atomically commits files to `Games/<platform>/<Game Name>/<filename>`.
+
+---
+
+### 3.3 Parameters & Flags
+
+| Flag | Type | Description |
+| :--- | :--- | :--- |
+| `[path]` | `string` | Source file or directory path (prompted interactively if omitted). |
+| `--platform <slug>` | `string` | Target platform slug (e.g. `pc`, `gba`, `ps1`, `nes`). |
+| `--mode <auto\|scaffold>` | `string` | Ingestion mode (`auto` for batch scanning, `scaffold` for guided intake). |
+| `-r, --recursive` | `boolean` | Recursively scan subfolders during automated batch import (default: `false`). |
+| `--copy` | `boolean` | Copy files into library (default: `true`). |
+| `--move` | `boolean` | Move files into library instead of copying. |
+| `--dry-run` | `boolean` | Preview planned operations without making filesystem modifications. |
+
+---
+
+## 4. `verify`
+
+The `verify` sub-command checks the integrity and checksums of installed games in the `Games/` directory.
+
+- Verifies that binary containers match their corresponding hashes stored in `checksum/`.
+- Accepts an optional platform argument to restrict verification (e.g. `orbit game verify pc`).
+- Reports valid and corrupted/mismatched files.
