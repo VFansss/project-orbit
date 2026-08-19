@@ -45,6 +45,18 @@ The 4-character **Game Code** breakdown:
 
 ---
 
+## Golden preservation standards
+
+Orbit's Golden Preservation Standard for Game Boy Advance is: **`.zip` containing a single clean `.gba` ROM image**.
+
+### Rationale:
+- **Universal Emulator Compatibility:** Supported out-of-the-box by all major emulators (mGBA, RetroArch, VisualBoyAdvance).
+- **Storage Efficiency:** Standard Deflate compression reduces raw ROM sizes by 30%–70% (losslessly compressing empty cartridge padding bytes).
+- **Zero-Latency Indexing (0 ms):** The ZIP Central Directory exposes the internal uncompressed CRC32 directly, enabling instant batch library cataloging without disk decompression.
+- **100% Lossless & Reversible:** Can be extracted back to the identical byte-for-byte `.gba` binary dump at any time.
+
+---
+
 ## Data sources
 
 ### No-Intro set - DAT-O-MATIC

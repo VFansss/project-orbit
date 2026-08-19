@@ -34,6 +34,18 @@ An backward-compatible extension to iNES that supports advanced sub-mappers, PRG
 
 ---
 
+## Golden preservation standards
+
+Orbit's Golden Preservation Standard for NES is: **`.zip` containing a clean `.nes` ROM image with valid iNES or NES 2.0 header**.
+
+### Rationale:
+- **Universal Emulator Compatibility:** Supported natively by all standard NES emulators (Mesen, Nestopia, FCEUX, RetroArch).
+- **Storage Optimization:** Deflate compression reduces ROM footprint losslessly.
+- **Mapper Preservation:** The 16-byte iNES / NES 2.0 header ensures accurate hardware mapper emulation across all engines.
+- **100% Lossless & Reversible:** Can be extracted back to the byte-for-byte `.nes` file without modification.
+
+---
+
 ## Data sources
 
 ### NesCartDB (BootGod Database)

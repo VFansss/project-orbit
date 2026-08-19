@@ -62,6 +62,19 @@ In multi-disc games (e.g. *Final Fantasy VII*, *Metal Gear Solid*), each disc ha
 
 ---
 
+## Golden preservation standards
+
+Orbit's Golden Preservation Standard for PlayStation 1 is: **`.chd` (MAME Compressed Hunks of Data - CD V5)**.
+
+### Rationale:
+- **Unified Single-File Container:** Eliminates fragmented multi-file dumps (replacing complex CUE sheets and 10+ audio `.bin` tracks with one neat container).
+- **Substantial Storage Savings (40%–60%):** Leverages lossless FLAC audio compression for CD-DA audio tracks and LZMA/zlib for data sectors.
+- **Universal Modern Emulator Support:** Supported natively by all leading PS1 emulators (DuckStation, Beetle PSX, PCSX-ReARMed, SwanStation) without background extraction.
+- **Raw SHA1 Preservation:** The CHD v5 header embeds the exact `rawsha1` checksum of the uncompressed source disc for instant Redump auditing.
+- **100% Lossless & Reversible:** Can be converted back to the original byte-identical `.cue` + multi-`.bin` dump using `chdman extractcd`.
+
+---
+
 ## Data sources
 
 ### Redump.org
