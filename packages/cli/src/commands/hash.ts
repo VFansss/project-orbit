@@ -10,36 +10,43 @@ import { access } from 'node:fs/promises'
  */
 export default (cli: CAC) => {
   cli
-    .command('hash [action] [path]', 'Calculate file hashes (calculate)')
+    .command('hash [action] [path]', 'Calculate file hashes (calculate, file, path)')
     .option('--algo <algorithms>', 'Comma separated algorithms (crc32,md5,sha1,sha256)')
-    .option('--allow-large', 'Allow hashing files larger than 1GB')
-    .action(async (action?: string, path?: string, flags?: any) => {
+    .option('--allow-large', 'Allow hashing files larger than 1GB', { default: false })
+    .option('--scan-zip', 'Scan inside .zip archives in memory', { default: false })
+    .option('--path <path>', 'Path to the target file')
+    .option('--file <file>', 'Path to the target file')
+    .action(async (action?: string, path?: string, flags: any = {}) => {
+      const knownActions = ['calculate', 'file', 'path', 'calc']
       let targetAction = action
-      let targetPath = path
-      
+      let targetPath = flags.path || flags.file || path
+
+      // If action is passed as a file path directly (e.g. 'orbit hash ./mygame.iso')
+      if (action && !knownActions.includes(action.toLowerCase())) {
+        targetPath = action
+        targetAction = 'calculate'
+      } else if (action && knownActions.includes(action.toLowerCase())) {
+        targetAction = 'calculate'
+      }
+
       // 1. Interactive action selection if missing
-      if (!targetAction) {
+      if (!targetAction && !targetPath) {
         p.intro('\x1b[34mOrbit Hash Utility\x1b[0m')
         const response = await p.select({
           message: 'Select an action:',
           options: [
-            { value: 'calculate', label: 'Calculate', hint: 'Compute hashes for a file' }
+            { value: 'calculate', label: 'Calculate', hint: 'Compute hashes for a file or path' }
           ],
         })
         if (p.isCancel(response)) process.exit(0)
         targetAction = response as string
       }
 
-      if (targetAction !== 'calculate') {
-        console.error(`\x1b[31mError:\x1b[0m Unknown action "${targetAction}"`)
-        process.exit(1)
-      }
-
       // 2. Path Selection
       if (!targetPath) {
         const response = await p.text({
           message: 'Enter the file path:',
-          validate: (v) => v.length === 0 ? 'Path is required' : undefined
+          validate: (v) => v.trim().length === 0 ? 'Path is required' : undefined
         })
         if (p.isCancel(response)) process.exit(0)
         targetPath = response as string
@@ -60,16 +67,20 @@ export default (cli: CAC) => {
       
       if (flags.algo) {
         algorithms = flags.algo.split(',').map((s: string) => s.trim().toLowerCase()) as HashAlgorithm[]
+      } else if (path || (action && !knownActions.includes(action.toLowerCase())) || flags.path || flags.file) {
+        // Direct non-interactive CLI invocation defaults to all algorithms
+        algorithms = ['crc32', 'md5', 'sha1', 'sha256']
       } else {
-        // Always ask if not provided via flag
+        // Interactive menu prompt
         const response = await p.multiselect({
           message: 'Select algorithms to calculate (Space to select, Enter to confirm):',
           options: [
             { value: 'crc32', label: 'CRC32', hint: 'Standard for ROM sets' },
             { value: 'md5', label: 'MD5', hint: 'Fast, used by Hasheous' },
-            { value: 'sha1', label: 'SHA1', hint: 'Recommended for identity' },
-            { value: 'sha256', label: 'SHA256', hint: 'Most secure' },
+            { value: 'sha1', label: 'SHA1', hint: 'Recommended for disc media' },
+            { value: 'sha256', label: 'SHA256', hint: 'Most secure / fast on modern CPUs' },
           ],
+          initialValues: ['crc32', 'md5', 'sha1', 'sha256'],
           required: true
         })
         if (p.isCancel(response)) process.exit(0)
@@ -77,19 +88,20 @@ export default (cli: CAC) => {
       }
 
       // 4. Execution
+      const shouldScanZip = !!(flags['scan-zip'] || flags.scanZip)
       const isZip = absolutePath.toLowerCase().endsWith('.zip')
       const s = p.spinner()
-      if (isZip) {
+      if (isZip && shouldScanZip) {
         s.start(`Analyzing ZIP contents in memory: ${targetPath}...`)
       } else {
         s.start(`Calculating hashes for: ${targetPath}...`)
       }
       
       try {
-        const results = await calculateFileHashes(absolutePath, algorithms, flags.allowLarge)
+        const results = await calculateFileHashes(absolutePath, algorithms, flags.allowLarge, shouldScanZip)
         s.stop('Calculation finished.')
 
-        if (isZip) {
+        if (isZip && shouldScanZip) {
           console.log(`\n\x1b[33mNote:\x1b[0m Evaluated internal contents of ZIP archive.`)
         }
 
