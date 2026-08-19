@@ -23,12 +23,13 @@ export interface GamePlatformDefinition {
   scaffoldMode?: 'forced' | 'choose' | 'disabled'; // Ingestion wizard behavior
   setHashAlgo?: 'crc32' | 'sha1' | 'sha256' | 'md5'; // Master indexing hash for [SET-xxx] romsets
   productCodeExample?: string; // Official hardware serial / product code example (e.g. 'AGB-ABCD-USA', 'SLUS-12345')
+  hashUnfriendly?: boolean; // True for platforms without strict/deterministic binary ROM hashes (e.g. PC)
 }
 
 export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
   'pc': {
     id: 'pc',
-    name: 'PC (Windows/Linux)',
+    name: 'PC Games',
     manufacturer: 'Generic',
     category: 'computer',
     extensions: ['.exe', '.lnk', '.url', '.bat', '.sh', '.iso', '.zip', '.7z', '.rar'],
@@ -36,7 +37,9 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     isRetro: false,
     scaffoldMode: 'forced',
     setHashAlgo: 'sha256',
+    hashUnfriendly: true,
   },
+
   'ps1': {
     id: 'ps1',
     name: 'Sony PlayStation',
