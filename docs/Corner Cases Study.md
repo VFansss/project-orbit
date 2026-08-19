@@ -133,4 +133,10 @@ Ideas:
 - Support both solutions above at the same time?
   - What should be the "official" way to do this, and what use as a fallback?
 
+## bin/cue to CHD and reverse
+
+From what I know, chdman don't spit back all .bin that has been once converted into a CHD. Seems to be a known issue, I want 100% reversability so I need to investigate it
+
+https://gbatemp.net/threads/chdman-question-about-converting-game-with-multiple-bin-files.557476/
+
 ### Closed
