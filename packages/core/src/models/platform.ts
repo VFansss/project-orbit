@@ -8,6 +8,8 @@ export interface PlatformStatus {
 
 export type PlatformCategory = 'console' | 'handheld' | 'computer' | 'arcade' | 'hybrid';
 
+export type PlatformFlatsetPolicy = 'forced' | 'enabled' | 'none';
+
 /**
  * Registry of supported game platforms in Orbit.
  * The key is the internal Orbit slug used for folders (e.g., 'pc', 'ps1').
@@ -24,6 +26,8 @@ export interface GamePlatformDefinition {
   setHashAlgo?: 'crc32' | 'sha1' | 'sha256' | 'md5'; // Master indexing hash for [SET-xxx] romsets
   productCodeExample?: string; // Official hardware serial / product code example (e.g. 'AGB-ABCD-USA', 'SLUS-12345')
   hashUnfriendly?: boolean; // True for platforms without strict/deterministic binary ROM hashes (e.g. PC)
+  flatsetPolicy?: PlatformFlatsetPolicy; // 'none' | 'forced' | 'enabled'
+  supportedFlatsets?: string[]; // Official supported flatset versions (e.g. ['0.78'])
 }
 
 export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
@@ -38,8 +42,8 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     scaffoldMode: 'forced',
     setHashAlgo: 'sha256',
     hashUnfriendly: true,
+    flatsetPolicy: 'none',
   },
-
   'ps1': {
     id: 'ps1',
     name: 'Sony PlayStation',
@@ -51,6 +55,7 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     scaffoldMode: 'choose',
     setHashAlgo: 'sha1',
     productCodeExample: 'SLUS-00594',
+    flatsetPolicy: 'none',
   },
   'nes': {
     id: 'nes',
@@ -63,6 +68,7 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     scaffoldMode: 'choose',
     setHashAlgo: 'crc32',
     productCodeExample: 'NES-SM-USA',
+    flatsetPolicy: 'none',
   },
   'gba': {
     id: 'gba',
@@ -75,6 +81,20 @@ export const SUPPORTED_PLATFORMS: Record<string, GamePlatformDefinition> = {
     scaffoldMode: 'choose',
     setHashAlgo: 'crc32',
     productCodeExample: 'AGB-BPEE-USA',
+    flatsetPolicy: 'none',
+  },
+  'mame': {
+    id: 'mame',
+    name: 'Multiple Arcade Machine Emulator',
+    manufacturer: 'MAMEdev',
+    category: 'arcade',
+    extensions: ['.zip', '.7z', '.chd'],
+    aliases: ['arcade', 'mame2003', 'mame2003-plus'],
+    isRetro: true,
+    scaffoldMode: 'disabled',
+    setHashAlgo: 'crc32',
+    flatsetPolicy: 'forced',
+    supportedFlatsets: ['0.78-split', '0.78-nonmerged', '0.78-merged'],
   }
 };
 

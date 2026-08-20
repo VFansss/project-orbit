@@ -23,6 +23,10 @@
   - [ ] Disc media conversion & import (PS1 ISO/CUE/BIN -> `.chd` via `chdman` sidecar)
   - [ ] Folder-based games import (PC)
 
+## Bugfix
+
+- [ ] When using "bios import", importing a .zip with --scan-zip will import the .zip itself, not the bios within the archive
+
 ## Dream corner
 
 - [ ] **Savedata Management**
